@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.10
+
+- Replace the Thunderstore icon with the new BetterReviveExperience branding.
+
 ## 0.2.9
 
 - Simplify the held-head revive key list to H, R, Y, and F.
