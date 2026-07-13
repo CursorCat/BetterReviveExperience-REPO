@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.11
+
+- Re-upload the refreshed Thunderstore icon as a new immutable package version.
+
 ## 0.2.10
 
 - Replace the Thunderstore icon with the new BetterReviveExperience branding.

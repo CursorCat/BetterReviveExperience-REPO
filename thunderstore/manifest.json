@@ -1,6 +1,6 @@
 {
     "name": "BetterReviveExperience",
-    "version_number": "0.2.10",
+    "version_number": "0.2.11",
     "website_url": "https://github.com/CursorCat/BetterReviveExperience-REPO",
     "description": "Host-only inventory protection with configurable extraction, truck, cart, shop, and held-head revives.",
     "dependencies": [
