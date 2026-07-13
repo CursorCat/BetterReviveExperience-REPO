@@ -1,54 +1,76 @@
-# KeepInventory
+# BetterReviveExperience
 
-Keep your inventory slot items after death in **R.E.P.O.**
+适用于 R.E.P.O. 的房主端复活与背包保留模组。
+Host-side revive and inventory protection mod for R.E.P.O.
 
-Die, get revived, and your equipped items are still in your inventory slots.
-
+## 功能
 ## Features
 
-- **Inventory slots survive death** — items in slots 1/2/3 stay after death and revive
-- **No visual glitches** — death camera, animations, and grab work normally
-- **Multiplayer support** — install on host, recommended for all players
-- **Configurable** — toggle on/off via BepInEx config
-- **Compatible** with MoreInventorySlots and other inventory mods
+- 死亡后保留背包栏物品；手持物品仍会掉落。
+- Keep inventory-slot items after death; physically held items still drop.
 
-## What Gets Kept
+- 死亡玩家的头进入提取点、卡车区域或推车时自动复活。
+- Automatically revive when a death head enters an extraction point, truck area, or cart.
 
-| Item State | Result |
-|---|---|
-| Items in inventory slots (1/2/3) | ✅ Kept after death |
-| Item held in hand (physics grab) | ❌ Drops normally |
+- 商店死亡后自动复活。
+- Automatically revive players who die in the shop.
 
-The physically held item cannot be preserved due to how R.E.P.O. handles death physics and camera transitions. All items stored in your inventory slots are safe.
+- 房主拿着死亡玩家的头时可按快捷键复活队友。
+- The host can revive a teammate with a hotkey while holding their death head.
 
+- 可设置团队货币费用与复活后血量。
+- Configure team-currency cost and post-revive health.
+
+- 背包保留、提取模式、持头快捷键、推车复活、商店复活和调试日志都可分别设置。
+- Inventory retention, extraction mode, held-head hotkey, cart revive, shop revive, and debug logging are configurable separately.
+
+## 安装
 ## Installation
 
-### With mod manager (r2modman / Thunderstore Mod Manager)
-1. Search for **KeepInventory** in the mod browser
-2. Click **Install**
-3. Launch the game through the mod manager
+只需要房主安装；客户端不需要安装。
+Only the host needs to install the mod; clients do not need it.
 
-### Manual
-1. Install [BepInEx 5.x](https://thunderstore.io/c/repo/p/BepInEx/BepInExPack/)
-2. Place `KeepInventoryMod.dll` into `BepInEx/plugins/`
-3. Launch the game
+请同时安装 REPOConfig，以便在游戏内调整全部设置。
+Install REPOConfig as well to adjust settings in-game.
 
-## Configuration
+## 设置
+## Settings
 
-After first launch, edit `BepInEx/config/com.mods.keepinventory.cfg`:
+- `KeepItemsOnDeath`：是否保留背包栏物品，默认开启。
+- `KeepItemsOnDeath`: keep inventory-slot items; enabled by default.
 
-| Setting | Default | Description |
-|---------|---------|-------------|
-| `KeepItemsOnDeath` | `true` | Keep inventory slot items on death |
+- `Mode`：提取点/卡车规则，可选 `Disabled`、`ExtractionMachineActivated`、`ExtractionOrTruck`，默认 `ExtractionOrTruck`。
+- `Mode`: extraction/truck rule; choose `Disabled`, `ExtractionMachineActivated`, or `ExtractionOrTruck`; default `ExtractionOrTruck`.
 
-## Multiplayer
+- `Cost`：每次复活消耗的团队货币，默认 `0`；可选 `0` 至 `100000`，每次增加 `1000`。
+- `Cost`: team currency cost per revive; default `0`; choose `0` to `100000` in `1000` increments.
 
-- Install on the **host** for the mod to work
-- Recommended: all players install for full compatibility
-- Works in singleplayer without any restrictions
+- `HealthPercent`：复活后的血量百分比，默认 `25`。
+- `HealthPercent`: health percentage after revive; default `25`.
 
-## Troubleshooting
+- `EnableHeldHeadRevive`：是否允许持死亡玩家的头快捷键复活，默认开启。
+- `EnableHeldHeadRevive`: enable held-head hotkey revive; enabled by default.
 
-- **Items still disappear** — make sure the mod is installed on the host
-- **Mod not loading** — check `BepInEx/LogOutput.log` for `[KeepInventory]` lines
-- **Breaks after game update** — method names may have changed, open an issue on GitHub
+- `HeldHeadReviveKey`：持死亡玩家的头复活按键，默认 `H`；仅可选 `H`、`R`、`Y`、`F`，不可自由输入文字。
+- `HeldHeadReviveKey`: held-head revive key; default `H`; choose only `H`, `R`, `Y`, or `F` instead of entering free text.
+
+- `EnableCartRevive`：死亡玩家的头放入推车后自动复活，默认开启。
+- `EnableCartRevive`: auto-revive when a death head is placed in a cart; enabled by default.
+
+- `EnableShopRevive`：商店死亡后自动复活，默认开启。
+- `EnableShopRevive`: auto-revive players killed in the shop; enabled by default.
+
+- `DebugLogging`：是否输出详细日志；当前开发版本默认开启，正式发布时会默认关闭。
+- `DebugLogging`: write detailed logs; enabled by default in this development build and disabled by default for releases.
+
+## 注意事项
+## Notes
+
+- 费用不足时不会复活，也不会扣钱。
+- If there is not enough currency, the player is not revived and no money is charged.
+
+- 团灭、开新局或存档重置时，不保证保留背包物品。
+- Inventory is not guaranteed to persist through full-run failure, a new run, or a save reset.
+
+- 请不要同时启用其他自动复活模组，以避免重复复活或重复扣费。
+- Do not enable other automatic revive mods at the same time, to avoid duplicate revives or charges.

@@ -1,0 +1,72 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <AssemblyName>BetterReviveExperience</AssemblyName>
+    <RootNamespace>BetterReviveExperience</RootNamespace>
+    <Version>0.2.9</Version>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+
+  <!-- Windows paths (original upstream, Thunderstore Mod Manager) -->
+  <PropertyGroup Condition="'$(OS)' == 'Windows_NT'">
+    <BepInExDir>C:\Users\lokee\AppData\Roaming\Thunderstore Mod Manager\DataFolder\REPO\profiles\Default\BepInEx</BepInExDir>
+    <ManagedDir>D:\games\Steam\steamapps\common\REPO\REPO_Data\Managed</ManagedDir>
+  </PropertyGroup>
+
+  <!-- Linux paths (r2modmanPlus + native Steam library) -->
+  <PropertyGroup Condition="'$(OS)' != 'Windows_NT'">
+    <BepInExDir>$(HOME)/.config/r2modmanPlus-local/REPO/profiles/Default/BepInEx</BepInExDir>
+    <ManagedDir>$(HOME)/.steam/steam/steamapps/common/REPO/REPO_Data/Managed</ManagedDir>
+  </PropertyGroup>
+
+  <!-- BepInEx + Harmony -->
+  <ItemGroup>
+    <Reference Include="BepInEx">
+      <HintPath>$(BepInExDir)/core/BepInEx.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="0Harmony">
+      <HintPath>$(BepInExDir)/core/0Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- Unity + Photon -->
+  <ItemGroup>
+    <Reference Include="UnityEngine">
+      <HintPath>$(ManagedDir)/UnityEngine.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>$(ManagedDir)/UnityEngine.CoreModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.InputLegacyModule">
+      <HintPath>$(ManagedDir)/UnityEngine.InputLegacyModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="PhotonUnityNetworking">
+      <HintPath>$(ManagedDir)/PhotonUnityNetworking.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="PhotonRealtime">
+      <HintPath>$(ManagedDir)/PhotonRealtime.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- Game assembly -->
+  <ItemGroup>
+    <Reference Include="Assembly-CSharp">
+      <HintPath>$(ManagedDir)/Assembly-CSharp.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- Auto-copy to plugins after build -->
+  <Target Name="CopyToPlugins" AfterTargets="Build">
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(BepInExDir)/plugins/BetterReviveExperience" />
+  </Target>
+
+</Project>

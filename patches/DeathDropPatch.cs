@@ -1,154 +1,121 @@
-using System;
-using System.Collections.Generic;
-using System.Reflection.Emit;
 using HarmonyLib;
 
-namespace KeepInventoryMod.Patches
+namespace BetterReviveExperience.Patches
 {
-    /// <summary>
-    /// Keeps inventory slot items (1/2/3) after death.
-    ///
-    /// Death in R.E.P.O. has two phases:
-    ///
-    ///   PlayerDeathRPC() [immediate]:
-    ///     -> physGrabber.ReleaseObject(-1, 0.1f)    // drops held item — we allow this
-    ///     -> playerTransform.SetActive(false)         // death camera — we allow this
-    ///
-    ///   PlayerDeathDone() [after animation]:
-    ///     -> physGrabber.ReleaseObject(-1, 0.1f)    // drops held item — we allow this
-    ///     -> Inventory.instance.ForceUnequip()        // DROPS ALL SLOTS — WE BLOCK THIS
-    ///     -> gameObject.SetActive(false)              // death cleanup — we allow this
-    ///
-    /// Strategy: let physics and camera work normally (no screen glitches),
-    /// only block the inventory slot wipe. Held item drops, but slot items survive.
-    /// </summary>
-    [HarmonyPatch]
-    public static class DeathDropPatch
+    // One-time runtime probe. This must appear after a player spawns; without it,
+    // a registered Harmony patch has not actually reached the live game loop.
+    internal static class PlayerAvatarUpdatePatch
     {
-        private static bool _playerIsDead = false;
+        private static void Postfix(PlayerAvatar __instance)
+        {
+            ReviveController.OnPlayerAvatarUpdated(__instance);
+        }
+    }
 
-        // ═══════════════════════════════════════════
-        //  Death/revive flag
-        // ═══════════════════════════════════════════
+    [HarmonyPatch(typeof(PlayerAvatar), "PlayerDeathRPC")]
+    internal static class PlayerDeathPatch
+    {
+        [HarmonyPostfix]
+        [HarmonyPriority(Priority.Last)]
+        private static void Postfix(PlayerAvatar __instance)
+        {
+            ReviveController.OnPlayerDeath(__instance);
+        }
+    }
 
-        [HarmonyPatch(typeof(PlayerAvatar), "PlayerDeath")]
+    [HarmonyPatch(typeof(PlayerDeathHead), "Trigger")]
+    internal static class DeathHeadTriggerPatch
+    {
+        [HarmonyPostfix]
+        private static void Postfix(PlayerDeathHead __instance)
+        {
+            ReviveController.OnDeathHeadTriggered(__instance);
+        }
+    }
+
+    // PlayerDeathHead.Update is the game's authoritative death-head loop. Its
+    // original method updates RoomVolumeCheck before this postfix runs.
+    [HarmonyPatch(typeof(PlayerDeathHead), "Update")]
+    internal static class DeathHeadUpdatePatch
+    {
+        [HarmonyPostfix]
+        private static void Postfix(PlayerDeathHead __instance)
+        {
+            ReviveController.OnDeathHeadUpdated(__instance);
+        }
+    }
+
+    [HarmonyPatch(typeof(PlayerAvatar), "ReviveRPC")]
+    internal static class PlayerRevivePatch
+    {
+        [HarmonyPostfix]
+        [HarmonyPriority(Priority.Last)]
+        private static void Postfix(PlayerAvatar __instance)
+        {
+            ReviveController.OnPlayerRevived(__instance);
+        }
+    }
+
+    [HarmonyPatch(typeof(PhysGrabCart), "Update")]
+    internal static class CartUpdatePatch
+    {
+        [HarmonyPostfix]
+        private static void Postfix(PhysGrabCart __instance)
+        {
+            ReviveController.OnCartUpdated(__instance);
+        }
+    }
+
+    // A dying client's Inventory.ForceUnequip sends this RPC to MasterClient.
+    // Blocking it on the host keeps inventory slots without a client-side mod.
+    [HarmonyPatch(typeof(ItemEquippable), "RPC_CompleteUnequip")]
+    internal static class ForcedUnequipPatch
+    {
         [HarmonyPrefix]
         [HarmonyPriority(Priority.First)]
-        static void OnPlayerDeath()
+        private static bool Prefix(
+            ItemEquippable __instance,
+            int physGrabberPhotonViewID,
+            bool isForceUnequip)
         {
-            if (!Plugin.KeepItemsOnDeath.Value) return;
-            _playerIsDead = true;
-            Plugin.Log.LogInfo("[KeepInventory] PlayerDeath — dead flag ON");
+            return ReviveController.AllowForcedUnequip(
+                __instance,
+                physGrabberPhotonViewID,
+                isForceUnequip
+            );
         }
+    }
 
-        [HarmonyPatch(typeof(PlayerAvatar), "ReviveRPC")]
+    [HarmonyPatch(typeof(RunManager), "ChangeLevel")]
+    internal static class LevelChangePatch
+    {
+        [HarmonyPrefix]
+        private static void Prefix()
+        {
+            ReviveController.Reset(refundPending: true);
+            Plugin.Debug("[BRE] level change: state reset");
+        }
+    }
+
+    [HarmonyPatch(typeof(RoundDirector), "Start")]
+    internal static class RoundStartPatch
+    {
         [HarmonyPostfix]
-        static void OnRevive()
+        private static void Postfix()
         {
-            _playerIsDead = false;
-            Plugin.Log.LogInfo("[KeepInventory] ReviveRPC — dead flag OFF");
-        }
-
-        // ═══════════════════════════════════════════
-        //  Transpiler on PlayerDeathDone
-        //  Replaces Inventory.ForceUnequip() with our conditional wrapper
-        //  Everything else (ReleaseObject, SetActive) runs normally
-        // ═══════════════════════════════════════════
-
-        public static void ConditionalForceUnequip(Inventory inventory)
-        {
-            if (!Plugin.KeepItemsOnDeath.Value)
-            {
-                inventory.ForceUnequip();
-                return;
-            }
-            Plugin.Log.LogInfo("[KeepInventory] BLOCKED Inventory.ForceUnequip — slot items kept!");
-        }
-
-        [HarmonyPatch(typeof(PlayerAvatar), "PlayerDeathDone")]
-        [HarmonyTranspiler]
-        static IEnumerable<CodeInstruction> TranspileDeathDone(IEnumerable<CodeInstruction> instructions)
-        {
-            var forceUnequipMethod = AccessTools.Method(typeof(Inventory), "ForceUnequip");
-            var replacement = AccessTools.Method(typeof(DeathDropPatch), nameof(ConditionalForceUnequip));
-
-            int patchCount = 0;
-
-            foreach (var code in instructions)
-            {
-                if (forceUnequipMethod != null && code.Calls(forceUnequipMethod))
-                {
-                    yield return new CodeInstruction(OpCodes.Call, replacement);
-                    patchCount++;
-                }
-                else
-                {
-                    yield return code;
-                }
-            }
-
-            Plugin.Log.LogInfo($"[KeepInventory] Transpiler: patched {patchCount} ForceUnequip calls in PlayerDeathDone");
-        }
-
-        // ═══════════════════════════════════════════
-        //  Safety net: block StatsManager inventory slot clearing
-        //  ForceUnequip internally calls PlayerInventoryUpdate("", slot)
-        //  but other paths might too — this catches them all
-        // ═══════════════════════════════════════════
-
-        [HarmonyPatch(typeof(StatsManager), "PlayerInventoryUpdate")]
-        [HarmonyPrefix]
-        static bool PreventInventoryClear(string _steamID, string itemName, int spot, bool sync)
-        {
-            if (!Plugin.KeepItemsOnDeath.Value) return true;
-
-            if (string.IsNullOrEmpty(itemName) && _playerIsDead)
-            {
-                Plugin.Log.LogInfo($"[KeepInventory] BLOCKED inventory slot {spot} clear");
-                return false;
-            }
-
-            return true;
-        }
-
-        // ═══════════════════════════════════════════
-        //  Block individual item ForceUnequip RPC
-        //  RPC_ForceUnequip teleports the item and clears the slot
-        // ═══════════════════════════════════════════
-
-        [HarmonyPatch(typeof(ItemEquippable), "RPC_ForceUnequip")]
-        [HarmonyPrefix]
-        static bool BlockItemForceUnequip()
-        {
-            if (!Plugin.KeepItemsOnDeath.Value) return true;
-
-            if (_playerIsDead)
-            {
-                Plugin.Log.LogInfo("[KeepInventory] BLOCKED ItemEquippable.RPC_ForceUnequip");
-                return false;
-            }
-
-            return true;
-        }
-
-        // ═══════════════════════════════════════════
-        //  Reset
-        // ═══════════════════════════════════════════
-
-        public static void Reset()
-        {
-            _playerIsDead = false;
+            ReviveController.Reset();
+            Plugin.Debug("[BRE] round start: state reset");
         }
     }
 
     [HarmonyPatch(typeof(MainMenuOpen), "Start")]
-    public static class MainMenuClearPatch
+    internal static class MainMenuPatch
     {
         [HarmonyPostfix]
-        static void Postfix()
+        private static void Postfix()
         {
-            DeathDropPatch.Reset();
-            Plugin.Log.LogInfo("[KeepInventory] Main menu — state reset.");
+            ReviveController.Reset(refundPending: true);
+            Plugin.Debug("[BRE] main menu: state reset");
         }
     }
 }

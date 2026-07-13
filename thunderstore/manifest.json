@@ -1,9 +1,10 @@
 {
-    "name": "KeepInventory",
-    "version_number": "1.0.0",
-    "website_url": "https://github.com/silsotha/keep-inventory-REPO",
-    "description": "Keep your inventory slot items after death. Die, revive, and your equipped items are still there. Configurable.",
+    "name": "BetterReviveExperience",
+    "version_number": "0.2.9",
+    "website_url": "https://github.com/CursorCat/BetterReviveExperience-REPO",
+    "description": "Host-only inventory protection with configurable extraction, truck, cart, shop, and held-head revives.",
     "dependencies": [
-        "BepInEx-BepInExPack-5.4.2100"
+        "BepInEx-BepInExPack-5.4.2305",
+        "nickklmao-REPOConfig-1.2.6"
     ]
 }
