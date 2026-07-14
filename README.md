@@ -6,8 +6,8 @@ Host-side revive and inventory protection mod for R.E.P.O.
 ## 功能
 ## Features
 
-- 死亡后保留背包栏物品；任何能放进原版背包格的手持物品都会受到防打落保护，包括 Phase Bridge、Drone 和武器。
-- Keep inventory-slot items after death; any held item that fits a vanilla inventory slot receives forced-drop protection, including Phase Bridge, drones, and weapons.
+- 死亡后保留背包栏物品；Phase Bridge、Drone、武器等可收纳物品在受击或翻滚时会自动回到背包。
+- Keep inventory-slot items after death; storable items such as Phase Bridge, drones, and weapons automatically return to inventory after a hit or tumble.
 
 - 记录可收纳物品最后的实际持有者；玩家死亡时，手持物品会进入原版前三格中的空格，满格时传送到死亡玩家的头附近。
 - Track the last actual holder of each storable item; on death, return the held item to a free vanilla slot, or place it near the death head when all three slots are occupied.
@@ -45,7 +45,7 @@ Open `Mods → BetterReviveExperience` in the game menu.
 | 设置 | 默认值 | 简要说明 |
 |---|---:|---|
 | `KeepItemsOnDeath` | 开启 / On | 保留背包栏物品。<br>Keep inventory-slot items. |
-| `ProtectHeldItems` | 开启 / On | 保护所有能放进原版背包的手持物品；主动松手不受影响。若远程客户端已执行松手，则自动回收到空格或玩家附近。<br>Protect all held items that fit vanilla inventory; manual release remains unchanged. If a remote client already released it, recover it to a free slot or nearby. |
+| `ProtectHeldItems` | 开启 / On | 可收纳的手持物品被强制松开时，优先回到原格，再使用其他原版空格；主动松手不受影响。前三格全满时，单人/房主继续持有，远程玩家的物品回收到附近。<br>After a forced release, return a storable held item to its original slot, then another vanilla slot; manual release remains unchanged. When full, the local player keeps holding it and a remote item is recovered nearby. |
 | `ReturnHeldItemOnDeath` | 开启 / On | 死亡时将可收纳的手持物品放入原版前三格的空格；满格则传送到死亡玩家的头附近。<br>Return a storable held item to a free vanilla slot on death, or place it near the death head when full. |
 | `Mode` | `ExtractionOrTruck` | 选择 `Disabled`、`ExtractionMachineActivated` 或 `ExtractionOrTruck`。<br>Choose `Disabled`, `ExtractionMachineActivated`, or `ExtractionOrTruck`. |
 | `Cost` | `0` | 每次复活消耗的团队货币；可选 `0` 至 `100000`，每次增加 `1000`。<br>Team currency cost per revive; choose `0` to `100000` in `1000` increments. |

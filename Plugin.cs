@@ -5,7 +5,6 @@ using BepInEx.Bootstrap;
 using BepInEx.Configuration;
 using BepInEx.Logging;
 using HarmonyLib;
-using Photon.Pun;
 using UnityEngine;
 using BetterReviveExperience.Patches;
 
@@ -18,7 +17,7 @@ namespace BetterReviveExperience
     {
         public const string PLUGIN_GUID = "com.mods.betterreviveexperience";
         public const string PLUGIN_NAME = "BetterReviveExperience";
-        public const string PLUGIN_VERSION = "0.3.1";
+        public const string PLUGIN_VERSION = "0.3.2";
 
         private const int ReviveCostStep = 1000;
         private const int ReviveCostMaximum = 100000;
@@ -59,7 +58,8 @@ namespace BetterReviveExperience
                 "Inventory",
                 "ProtectHeldItems",
                 true,
-                "Protect any held item that can be stored in a vanilla inventory slot from forced-release events."
+                "Return a storable held item to its original or first free vanilla inventory slot after a forced release. " +
+                "If all three slots are occupied, the local player keeps holding it."
             );
 
             ReturnHeldItemOnDeath = Config.Bind(
@@ -212,12 +212,6 @@ namespace BetterReviveExperience
             RegisterPostfix(typeof(RoundDirector), "Start", typeof(RoundStartPatch), "Postfix");
             RegisterPostfix(typeof(MainMenuOpen), "Start", typeof(MainMenuPatch), "Postfix");
 
-            MethodInfo photonRpc = AccessTools.Method(
-                typeof(PhotonView),
-                nameof(PhotonView.RPC),
-                new[] { typeof(string), typeof(RpcTarget), typeof(object[]) }
-            );
-            RegisterPrefix(photonRpc, typeof(ForcedGrabReleaseRpcPatch), "Prefix", Priority.First);
         }
 
         private void RegisterPrefix(MethodInfo target, Type patchType, string patchName, int priority = Priority.Normal)

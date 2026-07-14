@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.2
+
+- Return a storable held item to its original vanilla inventory slot after a hit or tumble, falling back to another free vanilla slot.
+- Stop the native `ItemEquippable.ForceGrab()` timer before recovery so an item taken from inventory does not reattach to the hand.
+- Keep the item in the local player's hand when all three vanilla slots are occupied; retain the nearby fallback for remote players.
+
 ## 0.3.1
 
 - Fix single-player forced-drop protection by intercepting the direct `PhysGrabber.ReleaseObjectRPC` path used by impacts and tumbles.

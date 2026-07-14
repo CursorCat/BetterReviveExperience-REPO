@@ -15,6 +15,7 @@ namespace BetterReviveExperience
             public PhysGrabObject Physical;
             public ItemEquippable Item;
             public int OwnerViewId;
+            public int PreferredSlot;
             public float LastSeenAt;
         }
 
@@ -35,11 +36,14 @@ namespace BetterReviveExperience
         private const float RecentHoldWindowSeconds = 0.75f;
         private const float DeathCleanupDelaySeconds = 0.6f;
         private const float ReturnTimeoutSeconds = 4f;
-        private const float ForcedDropRecoveryDelaySeconds = 0.2f;
+        private const float ForcedDropRecoveryDelaySeconds = 0.05f;
         private const float ForcedDropRecoveryTimeoutSeconds = 2f;
 
         private static readonly FieldInfo GrabbedPhysObjectField =
             AccessTools.Field(typeof(PhysGrabber), "grabbedPhysGrabObject");
+
+        private static readonly FieldInfo ForceGrabTimerField =
+            AccessTools.Field(typeof(ItemEquippable), "forceGrabTimer");
 
         private static readonly Dictionary<string, HeldWeaponRecord> LastWeaponByPlayer =
             new Dictionary<string, HeldWeaponRecord>();
@@ -64,10 +68,14 @@ namespace BetterReviveExperience
             if (GrabbedPhysObjectField == null)
             {
                 missing.Add("PhysGrabber.grabbedPhysGrabObject");
-                return false;
             }
 
-            return true;
+            if (ForceGrabTimerField == null)
+            {
+                missing.Add("ItemEquippable.forceGrabTimer");
+            }
+
+            return GrabbedPhysObjectField != null && ForceGrabTimerField != null;
         }
 
         public static void ObservePlayer(PlayerAvatar player)
@@ -168,7 +176,7 @@ namespace BetterReviveExperience
                 return;
             }
 
-            int freeSlot = FindFreeVanillaSlot(playerId);
+            int freeSlot = FindFreeVanillaSlot(player, playerId, weapon.PreferredSlot);
             if (freeSlot >= 0)
             {
                 ReviveController.RestoreEquippedState(weapon.Item, freeSlot, weapon.OwnerViewId);
@@ -196,38 +204,6 @@ namespace BetterReviveExperience
                                $"item={ItemName(weapon.Item)}, reason=no-free-vanilla-slot");
         }
 
-        public static bool AllowOutgoingRpc(
-            PhotonView view,
-            string methodName,
-            RpcTarget target,
-            object[] parameters)
-        {
-            if (!Plugin.ProtectHeldItems.Value || !ReviveController.IsHost() ||
-                !view || methodName != "ReleaseObjectRPC" || target != RpcTarget.All ||
-                parameters == null || parameters.Length < 3)
-            {
-                return true;
-            }
-
-            PhysGrabber grabber = view.GetComponent<PhysGrabber>();
-            PlayerAvatar player = grabber ? grabber.playerAvatar : null;
-            if (!player || ReviveController.IsDead(player)) return true;
-
-            PhysGrabObject physical = GetHeldPhysical(grabber);
-            if (!IsStorableItem(physical, out ItemEquippable item)) return true;
-
-            RecordHolder(player, physical, item);
-            int weaponKey = GetWeaponKey(physical);
-            if (!LastProtectionLogAt.TryGetValue(weaponKey, out float lastLog) || Time.time - lastLog >= 1f)
-            {
-                LastProtectionLogAt[weaponKey] = Time.time;
-                Plugin.Log.LogInfo($"[BRE] prevented forced item drop: player={ReviveController.GetPlayerId(player)}, " +
-                                   $"item={ItemName(item)}");
-            }
-
-            return false;
-        }
-
         public static bool AllowForcedRelease(
             PhysGrabber grabber,
             bool physGrabEnded,
@@ -248,23 +224,26 @@ namespace BetterReviveExperience
             HeldWeaponRecord record = RecordHolder(player, physical, item);
             string playerId = ReviveController.GetPlayerId(player);
 
-            bool localOwner = !SemiFunc.IsMultiplayer() ||
-                              (player.photonView && player.photonView.IsMine);
-            if (localOwner)
+            bool localOwner = IsLocalOwner(player);
+            int freeSlot = FindFreeVanillaSlot(player, playerId, record.PreferredSlot);
+            if (localOwner && freeSlot < 0)
             {
                 int itemKey = GetWeaponKey(physical);
                 if (!LastProtectionLogAt.TryGetValue(itemKey, out float lastLog) ||
                     Time.time - lastLog >= 1f)
                 {
                     LastProtectionLogAt[itemKey] = Time.time;
-                    Plugin.Log.LogInfo($"[BRE] prevented local forced item drop: player={playerId}, " +
-                                       $"item={ItemName(item)}, singleplayer={!SemiFunc.IsMultiplayer()}");
+                    Plugin.Log.LogInfo($"[BRE] kept forced-drop item in hand: player={playerId}, " +
+                                       $"item={ItemName(item)}, reason=no-free-vanilla-slot");
                 }
 
                 return false;
             }
 
-            if (physGrabEnded) return true;
+            if (localOwner && ForceGrabTimerField != null)
+            {
+                ForceGrabTimerField.SetValue(item, 0f);
+            }
 
             PendingForcedDropRecoveries[playerId] = new PendingForcedDropRecovery
             {
@@ -273,8 +252,9 @@ namespace BetterReviveExperience
                 GiveUpAt = Time.time + ForcedDropRecoveryTimeoutSeconds
             };
 
-            Plugin.Debug($"[BRE] forced item release observed: player={playerId}, item={ItemName(item)}, " +
-                         $"sender={info.Sender?.ActorNumber}, releaseObject={releaseObjectViewId}");
+            Plugin.Log.LogInfo($"[BRE] forced item release queued for inventory: player={playerId}, " +
+                               $"item={ItemName(item)}, preferredSlot={record.PreferredSlot}, " +
+                               $"singleplayer={!SemiFunc.IsMultiplayer()}");
             return true;
         }
 
@@ -297,9 +277,19 @@ namespace BetterReviveExperience
             }
 
             PhysGrabObject current = GetHeldPhysical(player.physGrabber);
-            if (current == heldItem.Physical || heldItem.Item.IsEquipped())
+            if (heldItem.Item.IsEquipped())
             {
                 PendingForcedDropRecoveries.Remove(playerId);
+                return;
+            }
+
+            if (current == heldItem.Physical)
+            {
+                if (Time.time < pending.GiveUpAt) return;
+
+                PendingForcedDropRecoveries.Remove(playerId);
+                Plugin.Debug($"[BRE] forced-drop recovery ended with item still held: player={playerId}, " +
+                             $"item={ItemName(heldItem.Item)}");
                 return;
             }
 
@@ -315,7 +305,7 @@ namespace BetterReviveExperience
                 return;
             }
 
-            int freeSlot = FindFreeVanillaSlot(playerId);
+            int freeSlot = FindFreeVanillaSlot(player, playerId, heldItem.PreferredSlot);
             if (freeSlot >= 0)
             {
                 ReviveController.RestoreEquippedState(heldItem.Item, freeSlot, heldItem.OwnerViewId);
@@ -367,6 +357,7 @@ namespace BetterReviveExperience
                 OwnerViewId = SemiFunc.IsMultiplayer() && player.physGrabber && player.physGrabber.photonView
                     ? player.physGrabber.photonView.ViewID
                     : -1,
+                PreferredSlot = ReviveController.GetInventorySpotIndex(item),
                 LastSeenAt = Time.time
             };
 
@@ -418,15 +409,50 @@ namespace BetterReviveExperience
             return false;
         }
 
-        private static int FindFreeVanillaSlot(string playerId)
+        private static int FindFreeVanillaSlot(
+            PlayerAvatar player,
+            string playerId,
+            int preferredSlot = -1)
         {
             StatsManager stats = StatsManager.instance;
-            if (stats == null || string.IsNullOrEmpty(playerId)) return -1;
+            bool useLocalInventory = IsLocalOwner(player) && Inventory.instance != null;
+            if (!useLocalInventory && (stats == null || string.IsNullOrEmpty(playerId))) return -1;
 
-            if (!stats.playerInventorySpot1.ContainsKey(playerId)) return 0;
-            if (!stats.playerInventorySpot2.ContainsKey(playerId)) return 1;
-            if (!stats.playerInventorySpot3.ContainsKey(playerId)) return 2;
+            if (preferredSlot >= 0 && preferredSlot <= 2 &&
+                !IsVanillaSlotTaken(stats, playerId, preferredSlot, useLocalInventory))
+            {
+                return preferredSlot;
+            }
+
+            for (int slot = 0; slot <= 2; slot++)
+            {
+                if (!IsVanillaSlotTaken(stats, playerId, slot, useLocalInventory)) return slot;
+            }
+
             return -1;
+        }
+
+        private static bool IsVanillaSlotTaken(
+            StatsManager stats,
+            string playerId,
+            int slot,
+            bool useLocalInventory)
+        {
+            if (useLocalInventory)
+            {
+                InventorySpot inventorySpot = Inventory.instance.GetSpotByIndex(slot);
+                return inventorySpot != null && inventorySpot.IsOccupied();
+            }
+
+            if (slot == 0) return stats.playerInventorySpot1.ContainsKey(playerId);
+            if (slot == 1) return stats.playerInventorySpot2.ContainsKey(playerId);
+            return stats.playerInventorySpot3.ContainsKey(playerId);
+        }
+
+        private static bool IsLocalOwner(PlayerAvatar player)
+        {
+            return player && (!SemiFunc.IsMultiplayer() ||
+                              (player.photonView && player.photonView.IsMine));
         }
 
         private static Vector3 GetFallbackPosition(PlayerAvatar player, PlayerDeathHead deathHead)

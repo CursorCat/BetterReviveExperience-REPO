@@ -6,8 +6,8 @@ Host-side revive and inventory protection mod for R.E.P.O.
 ## 功能
 ## Features
 
-- 死亡后保留背包栏物品；任何能放进原版背包格的手持物品都会受到防打落保护，包括 Phase Bridge、Drone 和武器。
-- Keep inventory-slot items after death; any held item that fits a vanilla inventory slot receives forced-drop protection, including Phase Bridge, drones, and weapons.
+- 死亡后保留背包栏物品；Phase Bridge、Drone、武器等可收纳物品在受击或翻滚时会自动回到背包。
+- Keep inventory-slot items after death; storable items such as Phase Bridge, drones, and weapons automatically return to inventory after a hit or tumble.
 
 - 玩家死亡时，可收纳的手持物品会进入原版前三格中的空格；满格时传送到死亡玩家的头附近。
 - On death, return the storable held item to a free vanilla slot, or place it near the death head when all three slots are occupied.
@@ -42,8 +42,8 @@ Install REPOConfig as well to adjust settings in-game.
 - `KeepItemsOnDeath`：是否保留背包栏物品，默认开启。
 - `KeepItemsOnDeath`: keep inventory-slot items; enabled by default.
 
-- `ProtectHeldItems`：保护所有能放进原版背包的手持物品，默认开启；主动松手不受影响，远程客户端已松手时会自动回收到空格或玩家附近。
-- `ProtectHeldItems`: protect all held items that fit vanilla inventory; enabled by default; manual release remains unchanged, with recovery to a free slot or nearby when a remote client already released it.
+- `ProtectHeldItems`：可收纳的手持物品被强制松开时，优先回到原格，再使用其他原版空格，默认开启；主动松手不受影响。前三格全满时，单人/房主继续持有，远程玩家的物品回收到附近。
+- `ProtectHeldItems`: after a forced release, return a storable held item to its original slot, then another vanilla slot; enabled by default; manual release remains unchanged. When full, the local player keeps holding it and a remote item is recovered nearby.
 
 - `ReturnHeldItemOnDeath`：死亡时将可收纳的手持物品放入原版前三格的空格；满格则传送到死亡玩家的头附近，默认开启。
 - `ReturnHeldItemOnDeath`: return a storable held item to a free vanilla slot on death, or place it near the death head when full; enabled by default.

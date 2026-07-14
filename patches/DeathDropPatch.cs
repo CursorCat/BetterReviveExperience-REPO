@@ -58,23 +58,6 @@ namespace BetterReviveExperience.Patches
         }
     }
 
-    internal static class ForcedGrabReleaseRpcPatch
-    {
-        private static bool Prefix(
-            PhotonView __instance,
-            string methodName,
-            RpcTarget target,
-            object[] parameters)
-        {
-            return WeaponProtectionController.AllowOutgoingRpc(
-                __instance,
-                methodName,
-                target,
-                parameters
-            );
-        }
-    }
-
     internal static class ForcedGrabReleaseReceivePatch
     {
         private static bool Prefix(

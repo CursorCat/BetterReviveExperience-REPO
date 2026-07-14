@@ -529,6 +529,13 @@ namespace BetterReviveExperience
             );
         }
 
+        internal static int GetInventorySpotIndex(ItemEquippable item)
+        {
+            return item && InventorySpotIndexField != null
+                ? (int)InventorySpotIndexField.GetValue(item)
+                : -1;
+        }
+
         private static void Refund(int cost)
         {
             if (!IsHost() || cost <= 0 || StatsManager.instance == null || PunManager.instance == null) return;
