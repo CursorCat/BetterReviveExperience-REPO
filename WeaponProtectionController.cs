@@ -25,9 +25,18 @@ namespace BetterReviveExperience
             public float GiveUpAt;
         }
 
+        private sealed class PendingForcedDropRecovery
+        {
+            public HeldWeaponRecord Item;
+            public float ReadyAt;
+            public float GiveUpAt;
+        }
+
         private const float RecentHoldWindowSeconds = 0.75f;
         private const float DeathCleanupDelaySeconds = 0.6f;
         private const float ReturnTimeoutSeconds = 4f;
+        private const float ForcedDropRecoveryDelaySeconds = 0.2f;
+        private const float ForcedDropRecoveryTimeoutSeconds = 2f;
 
         private static readonly FieldInfo GrabbedPhysObjectField =
             AccessTools.Field(typeof(PhysGrabber), "grabbedPhysGrabObject");
@@ -43,6 +52,9 @@ namespace BetterReviveExperience
 
         private static readonly Dictionary<string, PendingWeaponReturn> PendingReturns =
             new Dictionary<string, PendingWeaponReturn>();
+
+        private static readonly Dictionary<string, PendingForcedDropRecovery> PendingForcedDropRecoveries =
+            new Dictionary<string, PendingForcedDropRecovery>();
 
         private static readonly Dictionary<int, float> LastProtectionLogAt =
             new Dictionary<int, float>();
@@ -63,20 +75,20 @@ namespace BetterReviveExperience
             if (!ReviveController.IsHost() || !player || ReviveController.IsDead(player)) return;
 
             PhysGrabObject physical = GetHeldPhysical(player.physGrabber);
-            if (!IsProtectedWeapon(physical, out ItemEquippable item)) return;
+            if (!IsStorableItem(physical, out ItemEquippable item)) return;
 
             RecordHolder(player, physical, item);
         }
 
         public static void CaptureBeforeDeath(PlayerAvatar player)
         {
-            if (!Plugin.ReturnHeldWeaponOnDeath.Value || !ReviveController.IsHost() || !player) return;
+            if (!Plugin.ReturnHeldItemOnDeath.Value || !ReviveController.IsHost() || !player) return;
 
             string playerId = ReviveController.GetPlayerId(player);
             PhysGrabObject physical = GetHeldPhysical(player.physGrabber);
             HeldWeaponRecord record = null;
 
-            if (IsProtectedWeapon(physical, out ItemEquippable item))
+            if (IsStorableItem(physical, out ItemEquippable item))
             {
                 record = RecordHolder(player, physical, item);
             }
@@ -90,18 +102,19 @@ namespace BetterReviveExperience
             if (record == null) return;
 
             DeathCandidates[playerId] = record;
-            Plugin.Debug($"[BRE] death weapon captured: player={playerId}, weapon={WeaponName(record.Item)}");
+            Plugin.Debug($"[BRE] death item captured: player={playerId}, item={ItemName(record.Item)}");
         }
 
         public static void ConfirmDeath(PlayerAvatar player)
         {
-            if (!Plugin.ReturnHeldWeaponOnDeath.Value || !ReviveController.IsHost() ||
+            if (!Plugin.ReturnHeldItemOnDeath.Value || !ReviveController.IsHost() ||
                 !player || !ReviveController.IsDead(player))
             {
                 return;
             }
 
             string playerId = ReviveController.GetPlayerId(player);
+            PendingForcedDropRecoveries.Remove(playerId);
             if (!DeathCandidates.TryGetValue(playerId, out HeldWeaponRecord weapon)) return;
 
             DeathCandidates.Remove(playerId);
@@ -112,8 +125,8 @@ namespace BetterReviveExperience
                 GiveUpAt = Time.time + ReturnTimeoutSeconds
             };
 
-            Plugin.Log.LogInfo($"[BRE] held weapon queued for death return: player={playerId}, " +
-                               $"weapon={WeaponName(weapon.Item)}");
+            Plugin.Log.LogInfo($"[BRE] held item queued for death return: player={playerId}, " +
+                               $"item={ItemName(weapon.Item)}");
         }
 
         public static void ProcessPendingReturn(PlayerAvatar player, PlayerDeathHead deathHead = null)
@@ -131,22 +144,22 @@ namespace BetterReviveExperience
             if (weapon == null || !weapon.Item || !weapon.Physical)
             {
                 PendingReturns.Remove(playerId);
-                Plugin.Log.LogWarning($"[BRE] held weapon return cancelled: player={playerId}, weapon no longer exists");
+                Plugin.Log.LogWarning($"[BRE] held item return cancelled: player={playerId}, item no longer exists");
                 return;
             }
 
             if (!IsStillLastOwner(playerId, weapon.Physical) || IsHeldByAnotherPlayer(playerId, weapon.Physical))
             {
                 PendingReturns.Remove(playerId);
-                Plugin.Log.LogInfo($"[BRE] held weapon return cancelled: player={playerId}, " +
-                                   $"weapon={WeaponName(weapon.Item)}, reason=new-holder");
+                Plugin.Log.LogInfo($"[BRE] held item return cancelled: player={playerId}, " +
+                                   $"item={ItemName(weapon.Item)}, reason=new-holder");
                 return;
             }
 
             if (weapon.Item.IsEquipped())
             {
                 PendingReturns.Remove(playerId);
-                Plugin.Debug($"[BRE] held weapon already equipped: player={playerId}, weapon={WeaponName(weapon.Item)}");
+                Plugin.Debug($"[BRE] held item already equipped: player={playerId}, item={ItemName(weapon.Item)}");
                 return;
             }
 
@@ -160,8 +173,8 @@ namespace BetterReviveExperience
             {
                 ReviveController.RestoreEquippedState(weapon.Item, freeSlot, weapon.OwnerViewId);
                 PendingReturns.Remove(playerId);
-                Plugin.Log.LogInfo($"[BRE] held weapon returned to inventory: player={playerId}, " +
-                                   $"weapon={WeaponName(weapon.Item)}, slot={freeSlot}");
+                Plugin.Log.LogInfo($"[BRE] held item returned to inventory: player={playerId}, " +
+                                   $"item={ItemName(weapon.Item)}, slot={freeSlot}");
                 return;
             }
 
@@ -179,8 +192,8 @@ namespace BetterReviveExperience
             }
 
             PendingReturns.Remove(playerId);
-            Plugin.Log.LogInfo($"[BRE] held weapon returned nearby: player={playerId}, " +
-                               $"weapon={WeaponName(weapon.Item)}, reason=no-free-vanilla-slot");
+            Plugin.Log.LogInfo($"[BRE] held item returned nearby: player={playerId}, " +
+                               $"item={ItemName(weapon.Item)}, reason=no-free-vanilla-slot");
         }
 
         public static bool AllowOutgoingRpc(
@@ -189,7 +202,7 @@ namespace BetterReviveExperience
             RpcTarget target,
             object[] parameters)
         {
-            if (!Plugin.ProtectHeldWeapons.Value || !ReviveController.IsHost() ||
+            if (!Plugin.ProtectHeldItems.Value || !ReviveController.IsHost() ||
                 !view || methodName != "ReleaseObjectRPC" || target != RpcTarget.All ||
                 parameters == null || parameters.Length < 3)
             {
@@ -201,18 +214,130 @@ namespace BetterReviveExperience
             if (!player || ReviveController.IsDead(player)) return true;
 
             PhysGrabObject physical = GetHeldPhysical(grabber);
-            if (!IsProtectedWeapon(physical, out ItemEquippable item)) return true;
+            if (!IsStorableItem(physical, out ItemEquippable item)) return true;
 
             RecordHolder(player, physical, item);
             int weaponKey = GetWeaponKey(physical);
             if (!LastProtectionLogAt.TryGetValue(weaponKey, out float lastLog) || Time.time - lastLog >= 1f)
             {
                 LastProtectionLogAt[weaponKey] = Time.time;
-                Plugin.Log.LogInfo($"[BRE] prevented forced weapon drop: player={ReviveController.GetPlayerId(player)}, " +
-                                   $"weapon={WeaponName(item)}");
+                Plugin.Log.LogInfo($"[BRE] prevented forced item drop: player={ReviveController.GetPlayerId(player)}, " +
+                                   $"item={ItemName(item)}");
             }
 
             return false;
+        }
+
+        public static bool AllowForcedRelease(
+            PhysGrabber grabber,
+            bool physGrabEnded,
+            int releaseObjectViewId,
+            PhotonMessageInfo info)
+        {
+            if (!Plugin.ProtectHeldItems.Value || !ReviveController.IsHost() || !grabber)
+            {
+                return true;
+            }
+
+            PlayerAvatar player = grabber.playerAvatar;
+            if (!player || ReviveController.IsDead(player)) return true;
+
+            PhysGrabObject physical = GetHeldPhysical(grabber);
+            if (!IsStorableItem(physical, out ItemEquippable item)) return true;
+
+            HeldWeaponRecord record = RecordHolder(player, physical, item);
+            string playerId = ReviveController.GetPlayerId(player);
+
+            bool localOwner = !SemiFunc.IsMultiplayer() ||
+                              (player.photonView && player.photonView.IsMine);
+            if (localOwner)
+            {
+                int itemKey = GetWeaponKey(physical);
+                if (!LastProtectionLogAt.TryGetValue(itemKey, out float lastLog) ||
+                    Time.time - lastLog >= 1f)
+                {
+                    LastProtectionLogAt[itemKey] = Time.time;
+                    Plugin.Log.LogInfo($"[BRE] prevented local forced item drop: player={playerId}, " +
+                                       $"item={ItemName(item)}, singleplayer={!SemiFunc.IsMultiplayer()}");
+                }
+
+                return false;
+            }
+
+            if (physGrabEnded) return true;
+
+            PendingForcedDropRecoveries[playerId] = new PendingForcedDropRecovery
+            {
+                Item = record,
+                ReadyAt = Time.time + ForcedDropRecoveryDelaySeconds,
+                GiveUpAt = Time.time + ForcedDropRecoveryTimeoutSeconds
+            };
+
+            Plugin.Debug($"[BRE] forced item release observed: player={playerId}, item={ItemName(item)}, " +
+                         $"sender={info.Sender?.ActorNumber}, releaseObject={releaseObjectViewId}");
+            return true;
+        }
+
+        public static void ProcessForcedDropRecovery(PlayerAvatar player)
+        {
+            if (!ReviveController.IsHost() || !player || ReviveController.IsDead(player)) return;
+
+            string playerId = ReviveController.GetPlayerId(player);
+            if (!PendingForcedDropRecoveries.TryGetValue(playerId, out PendingForcedDropRecovery pending) ||
+                Time.time < pending.ReadyAt)
+            {
+                return;
+            }
+
+            HeldWeaponRecord heldItem = pending.Item;
+            if (heldItem == null || !heldItem.Item || !heldItem.Physical)
+            {
+                PendingForcedDropRecoveries.Remove(playerId);
+                return;
+            }
+
+            PhysGrabObject current = GetHeldPhysical(player.physGrabber);
+            if (current == heldItem.Physical || heldItem.Item.IsEquipped())
+            {
+                PendingForcedDropRecoveries.Remove(playerId);
+                return;
+            }
+
+            if (!IsStillLastOwner(playerId, heldItem.Physical) ||
+                IsHeldByAnotherPlayer(playerId, heldItem.Physical))
+            {
+                PendingForcedDropRecoveries.Remove(playerId);
+                return;
+            }
+
+            if (heldItem.Physical.playerGrabbing.Count > 0 && Time.time < pending.GiveUpAt)
+            {
+                return;
+            }
+
+            int freeSlot = FindFreeVanillaSlot(playerId);
+            if (freeSlot >= 0)
+            {
+                ReviveController.RestoreEquippedState(heldItem.Item, freeSlot, heldItem.OwnerViewId);
+                PendingForcedDropRecoveries.Remove(playerId);
+                Plugin.Log.LogInfo($"[BRE] forced-drop item recovered to inventory: player={playerId}, " +
+                                   $"item={ItemName(heldItem.Item)}, slot={freeSlot}");
+                return;
+            }
+
+            if (StatsManager.instance == null && Time.time < pending.GiveUpAt) return;
+
+            Vector3 returnPosition = player.transform.position + player.transform.forward * 0.75f + Vector3.up * 0.5f;
+            heldItem.Physical.Teleport(returnPosition, heldItem.Physical.transform.rotation);
+            if (heldItem.Physical.rb)
+            {
+                heldItem.Physical.rb.velocity = Vector3.zero;
+                heldItem.Physical.rb.angularVelocity = Vector3.zero;
+            }
+
+            PendingForcedDropRecoveries.Remove(playerId);
+            Plugin.Log.LogInfo($"[BRE] forced-drop item recovered nearby: player={playerId}, " +
+                               $"item={ItemName(heldItem.Item)}, reason=no-free-vanilla-slot");
         }
 
         private static HeldWeaponRecord RecordHolder(
@@ -250,7 +375,7 @@ namespace BetterReviveExperience
 
             if (changed)
             {
-                Plugin.Debug($"[BRE] weapon holder recorded: player={playerId}, weapon={WeaponName(item)}");
+                Plugin.Debug($"[BRE] storable item holder recorded: player={playerId}, item={ItemName(item)}");
             }
 
             return record;
@@ -263,19 +388,13 @@ namespace BetterReviveExperience
                 : null;
         }
 
-        private static bool IsProtectedWeapon(PhysGrabObject physical, out ItemEquippable item)
+        private static bool IsStorableItem(PhysGrabObject physical, out ItemEquippable item)
         {
             item = null;
             if (!physical || physical.dead) return false;
 
             item = physical.GetComponent<ItemEquippable>();
-            ItemAttributes attributes = physical.GetComponent<ItemAttributes>();
-            if (!item || !attributes || !attributes.item) return false;
-
-            SemiFunc.itemType type = attributes.item.itemType;
-            return type == SemiFunc.itemType.gun ||
-                   type == SemiFunc.itemType.melee ||
-                   type == SemiFunc.itemType.launcher;
+            return item;
         }
 
         private static bool IsStillLastOwner(string playerId, PhysGrabObject physical)
@@ -334,7 +453,7 @@ namespace BetterReviveExperience
                 : physical.GetInstanceID();
         }
 
-        private static string WeaponName(ItemEquippable item)
+        private static string ItemName(ItemEquippable item)
         {
             if (!item) return "unknown";
 
@@ -350,6 +469,7 @@ namespace BetterReviveExperience
             LastOwnerByWeapon.Clear();
             DeathCandidates.Clear();
             PendingReturns.Clear();
+            PendingForcedDropRecoveries.Clear();
             LastProtectionLogAt.Clear();
         }
     }

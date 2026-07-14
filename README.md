@@ -6,11 +6,11 @@ Host-side revive and inventory protection mod for R.E.P.O.
 ## 功能
 ## Features
 
-- 死亡后保留背包栏物品；枪械、近战和发射器不会因受击或击倒而被强制打落。
-- Keep inventory-slot items after death; guns, melee weapons, and launchers resist forced drops from hits and knockdowns.
+- 死亡后保留背包栏物品；任何能放进原版背包格的手持物品都会受到防打落保护，包括 Phase Bridge、Drone 和武器。
+- Keep inventory-slot items after death; any held item that fits a vanilla inventory slot receives forced-drop protection, including Phase Bridge, drones, and weapons.
 
-- 记录武器最后的实际持有者；玩家死亡时，手持武器会进入原版前三格中的空格，满格时传送到死亡玩家的头附近。
-- Track each weapon's last actual holder; on death, return the held weapon to a free vanilla slot, or place it near the death head when all three slots are occupied.
+- 记录可收纳物品最后的实际持有者；玩家死亡时，手持物品会进入原版前三格中的空格，满格时传送到死亡玩家的头附近。
+- Track the last actual holder of each storable item; on death, return the held item to a free vanilla slot, or place it near the death head when all three slots are occupied.
 
 - 死亡玩家的头进入提取点、卡车区域或推车时可自动复活。
 - Automatically revive when a death head enters an extraction point, truck area, or cart.
@@ -24,8 +24,8 @@ Host-side revive and inventory protection mod for R.E.P.O.
 - 可设置复活费用与复活后血量。
 - Configure revive cost and post-revive health.
 
-- 背包保留、武器防打落、死亡武器回收、提取模式、持头快捷键、推车复活、商店复活和调试日志都可分别设置。
-- Inventory retention, forced-drop protection, death weapon return, extraction mode, held-head hotkey, cart revive, shop revive, and debug logging are configurable separately.
+- 背包保留、手持物品防打落、死亡物品回收、提取模式、持头快捷键、推车复活、商店复活和调试日志都可分别设置。
+- Inventory retention, held-item protection, death item return, extraction mode, held-head hotkey, cart revive, shop revive, and debug logging are configurable separately.
 
 ## 安装
 ## Installation
@@ -45,8 +45,8 @@ Open `Mods → BetterReviveExperience` in the game menu.
 | 设置 | 默认值 | 简要说明 |
 |---|---:|---|
 | `KeepItemsOnDeath` | 开启 / On | 保留背包栏物品。<br>Keep inventory-slot items. |
-| `ProtectHeldWeapons` | 开启 / On | 防止受击、击倒等强制松手事件打落手持武器；主动松手不受影响。<br>Prevent forced weapon drops; manual release remains unchanged. |
-| `ReturnHeldWeaponOnDeath` | 开启 / On | 死亡时将手持武器放入原版前三格的空格；满格则传送到死亡玩家的头附近。<br>Return the death weapon to a free vanilla slot, or place it near the death head when full. |
+| `ProtectHeldItems` | 开启 / On | 保护所有能放进原版背包的手持物品；主动松手不受影响。若远程客户端已执行松手，则自动回收到空格或玩家附近。<br>Protect all held items that fit vanilla inventory; manual release remains unchanged. If a remote client already released it, recover it to a free slot or nearby. |
+| `ReturnHeldItemOnDeath` | 开启 / On | 死亡时将可收纳的手持物品放入原版前三格的空格；满格则传送到死亡玩家的头附近。<br>Return a storable held item to a free vanilla slot on death, or place it near the death head when full. |
 | `Mode` | `ExtractionOrTruck` | 选择 `Disabled`、`ExtractionMachineActivated` 或 `ExtractionOrTruck`。<br>Choose `Disabled`, `ExtractionMachineActivated`, or `ExtractionOrTruck`. |
 | `Cost` | `0` | 每次复活消耗的团队货币；可选 `0` 至 `100000`，每次增加 `1000`。<br>Team currency cost per revive; choose `0` to `100000` in `1000` increments. |
 | `HealthPercent` | `25` | 复活后的血量百分比。<br>Health percentage after revive. |
@@ -68,8 +68,8 @@ Restart the game after changing settings before testing.
 - 团灭、开新局或存档重置时，不保证保留背包物品。
 - Inventory is not guaranteed to persist through full-run failure, a new run, or a save reset.
 
-- 本模组不会读取或写入扩展背包格。安装任意扩展背包模组时，请预留原版前三格中的至少一格；否则死亡时的手持武器只能传送到死亡玩家的头附近。
-- This mod does not read or write expanded inventory slots. When using any bag-expansion mod, keep at least one of the first three vanilla slots free; otherwise the held weapon can only be placed near the death head.
+- 本模组不会读取或写入扩展背包格。安装任意扩展背包模组时，请预留原版前三格中的至少一格；否则死亡时的手持物品只能传送到死亡玩家的头附近。
+- This mod does not read or write expanded inventory slots. When using any bag-expansion mod, keep at least one of the first three vanilla slots free; otherwise the held item can only be placed near the death head.
 
 - 如果 H 与其他模组冲突，请把 `HeldHeadReviveKey` 改成其他按键。
 - If H conflicts with another mod, change `HeldHeadReviveKey` to another key.

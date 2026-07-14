@@ -10,6 +10,7 @@ namespace BetterReviveExperience.Patches
         private static void Postfix(PlayerAvatar __instance)
         {
             WeaponProtectionController.ObservePlayer(__instance);
+            WeaponProtectionController.ProcessForcedDropRecovery(__instance);
             ReviveController.OnPlayerAvatarUpdated(__instance);
             WeaponProtectionController.ProcessPendingReturn(__instance);
         }
@@ -70,6 +71,24 @@ namespace BetterReviveExperience.Patches
                 methodName,
                 target,
                 parameters
+            );
+        }
+    }
+
+    internal static class ForcedGrabReleaseReceivePatch
+    {
+        private static bool Prefix(
+            PhysGrabber __instance,
+            bool physGrabEnded,
+            float _disableTimer,
+            int _releaseObjectViewID,
+            PhotonMessageInfo _info)
+        {
+            return WeaponProtectionController.AllowForcedRelease(
+                __instance,
+                physGrabEnded,
+                _releaseObjectViewID,
+                _info
             );
         }
     }

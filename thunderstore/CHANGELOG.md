@@ -1,10 +1,16 @@
 # Changelog
 
+## 0.3.1
+
+- Fix single-player forced-drop protection by intercepting the direct `PhysGrabber.ReleaseObjectRPC` path used by impacts and tumbles.
+- Treat every native inventory-storable `ItemEquippable` as protectable, including Phase Bridge and drones.
+- Add host recovery when an unmodded remote client has already processed a forced release.
+
 ## 0.3.0
 
-- Add host-only protection against forced drops of held guns, melee weapons, and launchers.
-- Track the last actual weapon holder without changing manual release behavior.
-- Return the weapon held at death to a free vanilla inventory slot, or place it near the death head when all three slots are occupied.
+- Add host-only protection and recovery for any held item that can enter a vanilla inventory slot.
+- Track the last actual holder without changing manual release behavior.
+- Return the storable item held at death to a free vanilla inventory slot, or place it near the death head when all three slots are occupied.
 - Document the boundary with bag-expansion mods: expanded slots are not read or written.
 
 ## 0.2.11

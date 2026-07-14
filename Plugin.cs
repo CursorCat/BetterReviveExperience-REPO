@@ -18,7 +18,7 @@ namespace BetterReviveExperience
     {
         public const string PLUGIN_GUID = "com.mods.betterreviveexperience";
         public const string PLUGIN_NAME = "BetterReviveExperience";
-        public const string PLUGIN_VERSION = "0.3.0";
+        public const string PLUGIN_VERSION = "0.3.1";
 
         private const int ReviveCostStep = 1000;
         private const int ReviveCostMaximum = 100000;
@@ -31,8 +31,8 @@ namespace BetterReviveExperience
         public static ManualLogSource Log { get; private set; }
 
         public static ConfigEntry<bool> KeepItemsOnDeath { get; private set; }
-        public static ConfigEntry<bool> ProtectHeldWeapons { get; private set; }
-        public static ConfigEntry<bool> ReturnHeldWeaponOnDeath { get; private set; }
+        public static ConfigEntry<bool> ProtectHeldItems { get; private set; }
+        public static ConfigEntry<bool> ReturnHeldItemOnDeath { get; private set; }
         public static ConfigEntry<string> ReviveTrigger { get; private set; }
         public static ConfigEntry<string> ReviveCost { get; private set; }
         public static ConfigEntry<int> ReviveHealthPercent { get; private set; }
@@ -55,18 +55,18 @@ namespace BetterReviveExperience
                 "Keep inventory-slot items when a player dies."
             );
 
-            ProtectHeldWeapons = Config.Bind(
+            ProtectHeldItems = Config.Bind(
                 "Inventory",
-                "ProtectHeldWeapons",
+                "ProtectHeldItems",
                 true,
-                "Prevent enemy hits, knockdowns, and other forced-release events from knocking held weapons away."
+                "Protect any held item that can be stored in a vanilla inventory slot from forced-release events."
             );
 
-            ReturnHeldWeaponOnDeath = Config.Bind(
+            ReturnHeldItemOnDeath = Config.Bind(
                 "Inventory",
-                "ReturnHeldWeaponOnDeath",
+                "ReturnHeldItemOnDeath",
                 true,
-                "Return the weapon held at death to the first free vanilla inventory slot (slots 1-3). " +
+                "Return the storable item held at death to the first free vanilla inventory slot (slots 1-3). " +
                 "If all three are occupied, place it near the death head instead."
             );
 
@@ -158,7 +158,7 @@ namespace BetterReviveExperience
 
             Log.LogInfo($"{PLUGIN_NAME} v{PLUGIN_VERSION} loaded");
             Log.LogInfo($"[BRE] patches={patchCount}, keepItems={KeepItemsOnDeath.Value}, " +
-                        $"protectWeapons={ProtectHeldWeapons.Value}, returnDeathWeapon={ReturnHeldWeaponOnDeath.Value}, " +
+                        $"protectHeldItems={ProtectHeldItems.Value}, returnDeathItem={ReturnHeldItemOnDeath.Value}, " +
                         $"mode={CurrentReviveMode}, cost={ReviveCostAmount}, " +
                         $"health={ReviveHealthPercent.Value}%, heldHead={EnableHeldHeadRevive.Value}/" +
                         $"{HeldHeadReviveKeyCode}, " +
@@ -181,7 +181,7 @@ namespace BetterReviveExperience
             if (Chainloader.PluginInfos.ContainsKey("Mistyck.NoForcedDropMod"))
             {
                 Log.LogWarning("[BRE] NoForcedDropMod detected. Disable its overlapping forced-drop hook " +
-                               "while BRE weapon protection is enabled.");
+                               "while BRE held-item protection is enabled.");
             }
         }
 
@@ -200,6 +200,13 @@ namespace BetterReviveExperience
             );
             RegisterPostfix(typeof(PlayerAvatar), "ReviveRPC", typeof(PlayerRevivePatch), "Postfix", Priority.Last);
             RegisterPostfix(typeof(PhysGrabCart), "Update", typeof(CartUpdatePatch), "Postfix");
+            RegisterPrefix(
+                typeof(PhysGrabber),
+                "ReleaseObjectRPC",
+                typeof(ForcedGrabReleaseReceivePatch),
+                "Prefix",
+                Priority.First
+            );
             RegisterPrefix(typeof(ItemEquippable), "RPC_CompleteUnequip", typeof(ForcedUnequipPatch), "Prefix", Priority.First);
             RegisterPrefix(typeof(RunManager), "ChangeLevel", typeof(LevelChangePatch), "Prefix");
             RegisterPostfix(typeof(RoundDirector), "Start", typeof(RoundStartPatch), "Postfix");
