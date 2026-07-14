@@ -1,4 +1,5 @@
 using HarmonyLib;
+using Photon.Pun;
 
 namespace BetterReviveExperience.Patches
 {
@@ -8,18 +9,28 @@ namespace BetterReviveExperience.Patches
     {
         private static void Postfix(PlayerAvatar __instance)
         {
+            WeaponProtectionController.ObservePlayer(__instance);
             ReviveController.OnPlayerAvatarUpdated(__instance);
+            WeaponProtectionController.ProcessPendingReturn(__instance);
         }
     }
 
     [HarmonyPatch(typeof(PlayerAvatar), "PlayerDeathRPC")]
     internal static class PlayerDeathPatch
     {
+        [HarmonyPrefix]
+        [HarmonyPriority(Priority.First)]
+        private static void Prefix(PlayerAvatar __instance)
+        {
+            WeaponProtectionController.CaptureBeforeDeath(__instance);
+        }
+
         [HarmonyPostfix]
         [HarmonyPriority(Priority.Last)]
         private static void Postfix(PlayerAvatar __instance)
         {
             ReviveController.OnPlayerDeath(__instance);
+            WeaponProtectionController.ConfirmDeath(__instance);
         }
     }
 
@@ -41,7 +52,25 @@ namespace BetterReviveExperience.Patches
         [HarmonyPostfix]
         private static void Postfix(PlayerDeathHead __instance)
         {
+            WeaponProtectionController.ProcessPendingReturn(__instance.playerAvatar, __instance);
             ReviveController.OnDeathHeadUpdated(__instance);
+        }
+    }
+
+    internal static class ForcedGrabReleaseRpcPatch
+    {
+        private static bool Prefix(
+            PhotonView __instance,
+            string methodName,
+            RpcTarget target,
+            object[] parameters)
+        {
+            return WeaponProtectionController.AllowOutgoingRpc(
+                __instance,
+                methodName,
+                target,
+                parameters
+            );
         }
     }
 
@@ -93,6 +122,7 @@ namespace BetterReviveExperience.Patches
         private static void Prefix()
         {
             ReviveController.Reset(refundPending: true);
+            WeaponProtectionController.Reset();
             Plugin.Debug("[BRE] level change: state reset");
         }
     }
@@ -104,6 +134,7 @@ namespace BetterReviveExperience.Patches
         private static void Postfix()
         {
             ReviveController.Reset();
+            WeaponProtectionController.Reset();
             Plugin.Debug("[BRE] round start: state reset");
         }
     }
@@ -115,6 +146,7 @@ namespace BetterReviveExperience.Patches
         private static void Postfix()
         {
             ReviveController.Reset(refundPending: true);
+            WeaponProtectionController.Reset();
             Plugin.Debug("[BRE] main menu: state reset");
         }
     }

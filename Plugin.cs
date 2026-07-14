@@ -5,6 +5,7 @@ using BepInEx.Bootstrap;
 using BepInEx.Configuration;
 using BepInEx.Logging;
 using HarmonyLib;
+using Photon.Pun;
 using UnityEngine;
 using BetterReviveExperience.Patches;
 
@@ -17,7 +18,7 @@ namespace BetterReviveExperience
     {
         public const string PLUGIN_GUID = "com.mods.betterreviveexperience";
         public const string PLUGIN_NAME = "BetterReviveExperience";
-        public const string PLUGIN_VERSION = "0.2.11";
+        public const string PLUGIN_VERSION = "0.3.0";
 
         private const int ReviveCostStep = 1000;
         private const int ReviveCostMaximum = 100000;
@@ -30,6 +31,8 @@ namespace BetterReviveExperience
         public static ManualLogSource Log { get; private set; }
 
         public static ConfigEntry<bool> KeepItemsOnDeath { get; private set; }
+        public static ConfigEntry<bool> ProtectHeldWeapons { get; private set; }
+        public static ConfigEntry<bool> ReturnHeldWeaponOnDeath { get; private set; }
         public static ConfigEntry<string> ReviveTrigger { get; private set; }
         public static ConfigEntry<string> ReviveCost { get; private set; }
         public static ConfigEntry<int> ReviveHealthPercent { get; private set; }
@@ -49,7 +52,22 @@ namespace BetterReviveExperience
                 "Inventory",
                 "KeepItemsOnDeath",
                 true,
-                "Keep inventory-slot items when a player dies. Held items still drop."
+                "Keep inventory-slot items when a player dies."
+            );
+
+            ProtectHeldWeapons = Config.Bind(
+                "Inventory",
+                "ProtectHeldWeapons",
+                true,
+                "Prevent enemy hits, knockdowns, and other forced-release events from knocking held weapons away."
+            );
+
+            ReturnHeldWeaponOnDeath = Config.Bind(
+                "Inventory",
+                "ReturnHeldWeaponOnDeath",
+                true,
+                "Return the weapon held at death to the first free vanilla inventory slot (slots 1-3). " +
+                "If all three are occupied, place it near the death head instead."
             );
 
             ReviveTrigger = Config.Bind(
@@ -140,6 +158,7 @@ namespace BetterReviveExperience
 
             Log.LogInfo($"{PLUGIN_NAME} v{PLUGIN_VERSION} loaded");
             Log.LogInfo($"[BRE] patches={patchCount}, keepItems={KeepItemsOnDeath.Value}, " +
+                        $"protectWeapons={ProtectHeldWeapons.Value}, returnDeathWeapon={ReturnHeldWeaponOnDeath.Value}, " +
                         $"mode={CurrentReviveMode}, cost={ReviveCostAmount}, " +
                         $"health={ReviveHealthPercent.Value}%, heldHead={EnableHeldHeadRevive.Value}/" +
                         $"{HeldHeadReviveKeyCode}, " +
@@ -158,11 +177,18 @@ namespace BetterReviveExperience
             WarnOverlappingReviveMod("Kai.Revive_at_Cart", "CartRevive");
             WarnOverlappingReviveMod("endersaltz.LetMeShop", "LetMeShop");
             WarnOverlappingReviveMod("com.yuniverse.reviveplayer", "UltimateReviveNew");
+
+            if (Chainloader.PluginInfos.ContainsKey("Mistyck.NoForcedDropMod"))
+            {
+                Log.LogWarning("[BRE] NoForcedDropMod detected. Disable its overlapping forced-drop hook " +
+                               "while BRE weapon protection is enabled.");
+            }
         }
 
         private void RegisterPatches()
         {
             RegisterPostfix(typeof(PlayerAvatar), "Update", typeof(PlayerAvatarUpdatePatch), "Postfix");
+            RegisterPrefix(typeof(PlayerAvatar), "PlayerDeathRPC", typeof(PlayerDeathPatch), "Prefix", Priority.First);
             RegisterPostfix(typeof(PlayerAvatar), "PlayerDeathRPC", typeof(PlayerDeathPatch), "Postfix", Priority.Last);
             RegisterPostfix(typeof(PlayerDeathHead), "Trigger", typeof(DeathHeadTriggerPatch), "Postfix");
             RegisterPostfix(
@@ -178,6 +204,26 @@ namespace BetterReviveExperience
             RegisterPrefix(typeof(RunManager), "ChangeLevel", typeof(LevelChangePatch), "Prefix");
             RegisterPostfix(typeof(RoundDirector), "Start", typeof(RoundStartPatch), "Postfix");
             RegisterPostfix(typeof(MainMenuOpen), "Start", typeof(MainMenuPatch), "Postfix");
+
+            MethodInfo photonRpc = AccessTools.Method(
+                typeof(PhotonView),
+                nameof(PhotonView.RPC),
+                new[] { typeof(string), typeof(RpcTarget), typeof(object[]) }
+            );
+            RegisterPrefix(photonRpc, typeof(ForcedGrabReleaseRpcPatch), "Prefix", Priority.First);
+        }
+
+        private void RegisterPrefix(MethodInfo target, Type patchType, string patchName, int priority = Priority.Normal)
+        {
+            MethodInfo callback = AccessTools.Method(patchType, patchName);
+            if (target == null || callback == null)
+            {
+                throw new MissingMethodException(
+                    $"[BRE] Cannot register prefix for {target?.DeclaringType?.FullName}.{target?.Name}"
+                );
+            }
+
+            _harmony.Patch(target, new HarmonyMethod(callback) { priority = priority });
         }
 
         private void RegisterPrefix(Type targetType, string targetName, Type patchType, string patchName, int priority = Priority.Normal)

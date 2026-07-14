@@ -1,8 +1,8 @@
 {
     "name": "BetterReviveExperience",
-    "version_number": "0.2.11",
+    "version_number": "0.3.0",
     "website_url": "https://github.com/CursorCat/BetterReviveExperience-REPO",
-    "description": "Host-only inventory protection with configurable extraction, truck, cart, shop, and held-head revives.",
+    "description": "Host-only inventory and held-weapon protection with configurable extraction, truck, cart, shop, and held-head revives.",
     "dependencies": [
         "BepInEx-BepInExPack-5.4.2305",
         "nickklmao-REPOConfig-1.2.6"

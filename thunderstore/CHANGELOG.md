@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.0
+
+- Add host-only protection against forced drops of held guns, melee weapons, and launchers.
+- Track the last actual weapon holder without changing manual release behavior.
+- Return the weapon held at death to a free vanilla inventory slot, or place it near the death head when all three slots are occupied.
+- Document the boundary with bag-expansion mods: expanded slots are not read or written.
+
 ## 0.2.11
 
 - Re-upload the refreshed Thunderstore icon as a new immutable package version.

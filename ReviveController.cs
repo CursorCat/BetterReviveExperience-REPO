@@ -75,6 +75,7 @@ namespace BetterReviveExperience
             Require(UpdateHealthMethod, "PlayerHealth.UpdateHealthRPC", missing);
             Require(StatGetRunCurrencyMethod, "SemiFunc.StatGetRunCurrency", missing);
             Require(StatSetRunCurrencyMethod, "SemiFunc.StatSetRunCurrency", missing);
+            WeaponProtectionController.ValidateGameApi(missing);
 
             if (missing.Count == 0)
             {
@@ -103,12 +104,12 @@ namespace BetterReviveExperience
                 : $"instance:{player.GetInstanceID()}";
         }
 
-        private static bool IsDead(PlayerAvatar player)
+        internal static bool IsDead(PlayerAvatar player)
         {
             return player && DeadSetField != null && (bool)DeadSetField.GetValue(player);
         }
 
-        private static bool IsHost()
+        internal static bool IsHost()
         {
             if (GameManager.instance == null) return false;
 
@@ -509,7 +510,7 @@ namespace BetterReviveExperience
             return view ? view.GetComponent<PhysGrabber>() : null;
         }
 
-        private static void RestoreEquippedState(ItemEquippable item, int spot, int ownerId)
+        internal static void RestoreEquippedState(ItemEquippable item, int spot, int ownerId)
         {
             if (SemiFunc.IsMultiplayer())
             {
