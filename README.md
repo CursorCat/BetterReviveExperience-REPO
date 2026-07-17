@@ -1,107 +1,127 @@
 # BetterReviveExperience
 
-适用于 R.E.P.O. 的房主端复活与背包保留模组。
-Host-side revive and inventory protection mod for R.E.P.O.
+> **⚠️ 兼容性警告 / Compatibility Warning**
+>
+> 请勿同时启用其他提供**自动复活、死亡背包保留、手持物品防掉落或自动回收**功能的模组。对于 GameTools 等多功能模组，请关闭其中与 BRE 重叠的选项。
+>
+> Do not enable other mods that provide **automatic revives, keep-inventory-on-death, held-item drop protection, or automatic item recovery**. For multi-purpose mods such as GameTools, disable the options that overlap with BRE.
 
-## 功能
-## Features
+[中文](#中文) | [English](#english)
 
-- 死亡后保留背包栏物品；Phase Bridge、Drone、武器等可收纳物品在受击或翻滚时会自动回到背包。
-- Keep inventory-slot items after death; storable items such as Phase Bridge, drones, and weapons automatically return to inventory after a hit or tumble.
+## 中文
 
-- 记录可收纳物品最后的实际持有者；玩家死亡时，手持物品会进入原版前三格中的空格，满格时传送到死亡玩家的头附近。
-- Track the last actual holder of each storable item; on death, return the held item to a free vanilla slot, or place it near the death head when all three slots are occupied.
+BetterReviveExperience 是一款仅需房主安装的 R.E.P.O. 复活与物品保护模组，加入房间的其他玩家无需安装。
 
-- 手持可收纳物品时按下另一个已占用格的快捷键，会将旧物品放进该格并取出新物品。
-- While holding a storable item, pressing another occupied-slot hotkey stores the old item in that slot and takes out the new item.
+### 安装
 
-- 死亡玩家的头进入提取点、卡车区域或推车时可自动复活。
-- Automatically revive when a death head enters an extraction point, truck area, or cart.
+- 使用 r2modman 或 Thunderstore Mod Manager 安装。
+- 依赖 `BepInExPack` 和 `REPOConfig`。
+- 在 `Mods → BetterReviveExperience` 中修改设置，修改后建议重启游戏。
 
-- 在商店死亡后自动复活。
-- Automatically revive players who die in the shop.
+### 功能
 
-- 房主拿着死亡玩家的头时可按快捷键复活队友。
-- The host can revive a teammate with a hotkey while holding their death head.
+- 死亡后保留原版背包栏物品。
+- 可收纳物品（Phase Bridge、无人机、武器等）因受击或翻滚脱手时自动回到原版背包；死亡时也会优先回收。
+- 手持物品时切换到已占用的背包格，会交换物品而不是将手中物品扔到地上。
+- 支持提取点、卡车、推车、商店和房主持死亡玩家的头按键复活。
+- 可设置复活条件、团队费用、复活血量和快捷键。
 
-- 可设置复活费用与复活后血量。
-- Configure revive cost and post-revive health.
+### 设置
 
-- 背包保留、手持物品防打落、死亡物品回收、提取模式、持头快捷键、推车复活、商店复活和调试日志都可分别设置。
-- Inventory retention, held-item protection, death item return, extraction mode, held-head hotkey, cart revive, shop revive, and debug logging are configurable separately.
-
-## 安装
-## Installation
-
-只需要房主安装；朋友加入房间不需要安装本模组。
-Only the host needs to install the mod; friends joining the lobby do not need it.
-
-请通过 r2modman 或 Thunderstore Mod Manager 安装，并同时安装 REPOConfig。
-Install through r2modman or Thunderstore Mod Manager, together with REPOConfig.
-
-## 配置
-## Configuration
-
-在游戏菜单打开 `Mods → BetterReviveExperience`。
-Open `Mods → BetterReviveExperience` in the game menu.
-
-| 设置 | 默认值 | 简要说明 |
+| 设置 | 默认值 | 作用 |
 |---|---:|---|
-| `KeepItemsOnDeath` | 开启 / On | 保留背包栏物品。<br>Keep inventory-slot items. |
-| `ProtectHeldItems` | 开启 / On | 可收纳的手持物品因受击或翻滚被强制松开时，优先回到原格，再使用其他原版空格；主动松手不受影响。前三格全满时，单人/房主继续持有，远程玩家的物品回收到附近。<br>After an impact or tumble release, return a storable held item to its original slot, then another vanilla slot; manual release remains unchanged. When full, the local player keeps holding it and a remote item is recovered nearby. |
-| `SwapHeldItemOnOccupiedSlot` | 开启 / On | 手持可收纳物品时按下另一个已占用格的快捷键，将旧物品存入该格而不是掉到地上。<br>When an occupied-slot hotkey is pressed, store the held storable item in that slot instead of dropping it. |
-| `ReturnHeldItemOnDeath` | 开启 / On | 死亡时将可收纳的手持物品放入原版前三格的空格；满格则传送到死亡玩家的头附近。<br>Return a storable held item to a free vanilla slot on death, or place it near the death head when full. |
-| `Mode` | `ExtractionOrTruck` | 选择 `Disabled`、`ExtractionMachineActivated` 或 `ExtractionOrTruck`。<br>Choose `Disabled`, `ExtractionMachineActivated`, or `ExtractionOrTruck`. |
-| `Cost` | `0` | 每次复活消耗的团队货币；可选 `0` 至 `100000`，每次增加 `1000`。<br>Team currency cost per revive; choose `0` to `100000` in `1000` increments. |
-| `HealthPercent` | `25` | 复活后的血量百分比。<br>Health percentage after revive. |
-| `EnableHeldHeadRevive` | 开启 / On | 是否允许持死亡玩家的头快捷键复活。<br>Enable held-head hotkey revive. |
-| `HeldHeadReviveKey` | `H` | 持死亡玩家的头复活按键；仅可选 `H`、`R`、`Y`、`F`，不可自由输入文字。<br>Held-head revive key; choose only `H`, `R`, `Y`, or `F` instead of entering free text. |
-| `EnableCartRevive` | 开启 / On | 死亡玩家的头放进推车后自动复活。<br>Auto-revive when a death head is placed in a cart. |
-| `EnableShopRevive` | 开启 / On | 商店死亡后自动复活。<br>Auto-revive players killed in the shop. |
-| `DebugLogging` | 开启 / On | 当前开发版本默认输出详细日志；正式发布时会默认关闭。<br>This development build writes detailed logs by default; release builds will default to off. |
+| `KeepItemsOnDeath` | 开启 | 死亡后保留背包栏物品 |
+| `ProtectHeldItems` | 开启 | 受击或翻滚时回收可收纳的手持物品 |
+| `SwapHeldItemOnOccupiedSlot` | 开启 | 切换到已占用格时交换物品 |
+| `ReturnHeldItemOnDeath` | 开启 | 死亡时回收手持的可收纳物品 |
+| `Mode` | `ExtractionOrTruck` | 设置提取点和卡车复活规则 |
+| `Cost` | `0` | 每次复活扣除的团队货币，范围 `0–100000`，步进 `1000` |
+| `HealthPercent` | `25` | 复活后的血量百分比 |
+| `EnableHeldHeadRevive` | 开启 | 房主持死亡玩家的头按键复活 |
+| `HeldHeadReviveKey` | `H` | 可选 `H`、`R`、`Y` 或 `F` |
+| `EnableCartRevive` | 开启 | 死亡玩家的头进入推车后复活 |
+| `EnableShopRevive` | 开启 | 在商店死亡后复活 |
+| `DebugLogging` | 开启 | 输出详细诊断日志 |
 
-修改设置后，请重新启动游戏再测试。
-Restart the game after changing settings before testing.
+`Mode` 可选：
 
-## 注意事项
-## Notes
+- `Disabled`：关闭提取点和卡车自动复活。
+- `ExtractionMachineActivated`：死亡玩家的头进入提取点，并在机器激活后复活。
+- `ExtractionOrTruck`：死亡玩家的头进入提取点或卡车区域后立即复活。
 
-- 费用不足时不会复活，也不会扣钱。
-- If there is not enough currency, the player is not revived and no money is charged.
+### 注意
 
-- 团灭、开新局或存档重置时，不保证保留背包物品。
-- Inventory is not guaranteed to persist through full-run failure, a new run, or a save reset.
+- 请在游戏原生设置中开启 `Item Unequip Auto Hold`，否则从背包取出的物品会在短暂计时后掉落。
+- 扩展背包格不受支持；使用扩展背包模组时，请在原版前三格中至少留一个空格。
+- 原版前三格全满时，死亡时手持的物品会放到死亡玩家的头附近。
+- 团队货币不足时不会复活，也不会扣费。
+- 团灭、开新局或重置存档时不保证保留物品。
 
-- 本模组不会读取或写入扩展背包格。安装任意扩展背包模组时，请预留原版前三格中的至少一格；否则死亡时的手持物品只能传送到死亡玩家的头附近。
-- This mod does not read or write expanded inventory slots. When using any bag-expansion mod, keep at least one of the first three vanilla slots free; otherwise the held item can only be placed near the death head.
+### 开发者
 
-- 如果 H 与其他模组冲突，请把 `HeldHeadReviveKey` 改成其他按键。
-- If H conflicts with another mod, change `HeldHeadReviveKey` to another key.
-
-- 请在游戏原生设置中开启“从背包取出后自动持有物品”。若该设置关闭，物品会在游戏的临时抓取计时结束后自动掉落；`ProtectHeldItems` 只处理受击和翻滚。
-- Enable the game's native auto-hold-after-unequip setting. When it is disabled, the game releases an item after its temporary hold expires; `ProtectHeldItems` only handles impacts and tumbles.
-
-- 请不要同时启用其他自动复活模组，以避免重复复活或重复扣费。
-- Do not enable other automatic revive mods at the same time, to avoid duplicate revives or charges.
-
-## 开发者说明
-## For Developers
-
-本节仅面向维护或修改模组的开发者；普通玩家不需要阅读或执行以下内容。
-This section is only for developers maintaining or changing the mod; regular players do not need to read or run the items below.
-
-- 项目使用 `netstandard2.1`，并直接引用本机 R.E.P.O. 与 BepInEx 的程序集。
-- The project targets `netstandard2.1` and directly references the local R.E.P.O. and BepInEx assemblies.
-
-- 使用以下命令构建：
-- Build with:
+项目目标框架为 `netstandard2.1`。构建命令：
 
 ```bash
 dotnet build -c Release
 ```
 
-- 构建成功后，DLL 会自动复制到当前 r2modman 配置的 BetterReviveExperience 插件目录。
-- After a successful build, the DLL is automatically copied to the BetterReviveExperience plugin folder in the active r2modman profile.
+游戏更新后，请重新检查 Harmony 目标、游戏程序集和 BepInEx 日志。
 
-- 游戏更新后，请先检查编译结果和游戏日志，再发布新版本。
-- After a game update, check the build result and game log before publishing a new version.
+## English
+
+BetterReviveExperience is a host-only revive and item-protection mod for R.E.P.O. Other players joining the lobby do not need to install it.
+
+### Installation
+
+- Install with r2modman or Thunderstore Mod Manager.
+- Requires `BepInExPack` and `REPOConfig`.
+- Change settings under `Mods → BetterReviveExperience`; restarting the game afterward is recommended.
+
+### Features
+
+- Keep vanilla inventory-slot items after death.
+- Return storable items such as Phase Bridge, drones, and weapons to vanilla inventory after an impact or tumble, and recover them on death.
+- Swap the held item into an occupied inventory slot instead of dropping it.
+- Revive through extraction points, the truck, carts, the shop, or the host's held-head hotkey.
+- Configure revive conditions, team cost, revive health, and hotkey.
+
+### Settings
+
+| Setting | Default | Purpose |
+|---|---:|---|
+| `KeepItemsOnDeath` | On | Keep inventory-slot items after death |
+| `ProtectHeldItems` | On | Recover storable held items after an impact or tumble |
+| `SwapHeldItemOnOccupiedSlot` | On | Swap items when selecting an occupied slot |
+| `ReturnHeldItemOnDeath` | On | Recover a storable item held at death |
+| `Mode` | `ExtractionOrTruck` | Set extraction-point and truck revive rules |
+| `Cost` | `0` | Team currency per revive, `0–100000` in steps of `1000` |
+| `HealthPercent` | `25` | Health percentage after revive |
+| `EnableHeldHeadRevive` | On | Let the host revive the held death head |
+| `HeldHeadReviveKey` | `H` | Choose `H`, `R`, `Y`, or `F` |
+| `EnableCartRevive` | On | Revive when a death head enters a cart |
+| `EnableShopRevive` | On | Revive after dying in the shop |
+| `DebugLogging` | On | Write detailed diagnostic logs |
+
+`Mode` options:
+
+- `Disabled`: disable automatic extraction-point and truck revives.
+- `ExtractionMachineActivated`: revive after the death head enters an extraction point and the machine is activated.
+- `ExtractionOrTruck`: revive immediately when the death head enters an extraction point or truck area.
+
+### Notes
+
+- Enable the native `Item Unequip Auto Hold` game setting, or inventory items will drop after the temporary grab timer expires.
+- Expanded inventory slots are not supported. Keep at least one of the first three vanilla slots free when using a bag-expansion mod.
+- If all three vanilla slots are full, the item held at death is placed near the death head.
+- A revive is not performed or charged when team currency is insufficient.
+- Items are not guaranteed to persist through a team wipe, new run, or save reset.
+
+### For Developers
+
+The project targets `netstandard2.1`. Build with:
+
+```bash
+dotnet build -c Release
+```
+
+After a game update, recheck the Harmony targets, game assemblies, and BepInEx log.
