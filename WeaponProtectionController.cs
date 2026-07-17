@@ -370,23 +370,38 @@ namespace BetterReviveExperience
             bool isForceUnequip)
         {
             if (!Plugin.SwapHeldItemOnOccupiedSlot.Value || isForceUnequip ||
-                !ReviveController.IsHost() || !outgoingItem || !outgoingItem.IsEquipped())
+                !ReviveController.IsHost() || !outgoingItem)
             {
                 return;
             }
 
             int targetSlot = ReviveController.GetInventorySpotIndex(outgoingItem);
-            if (targetSlot < 0 || targetSlot > 2) return;
+            if (targetSlot < 0 || targetSlot > 2)
+            {
+                Plugin.Debug($"[BRE] inventory swap skipped: outgoing={ItemName(outgoingItem)}, " +
+                             $"reason=invalid-slot, slot={targetSlot}");
+                return;
+            }
+
+            Plugin.Debug($"[BRE] inventory swap candidate: outgoing={ItemName(outgoingItem)}, " +
+                         $"slot={targetSlot}, grabberView={physGrabberViewId}");
 
             PhysGrabber grabber = ResolveGrabber(physGrabberViewId);
             PlayerAvatar player = grabber ? grabber.playerAvatar : null;
-            if (!player || ReviveController.IsDead(player)) return;
+            if (!player || ReviveController.IsDead(player))
+            {
+                Plugin.Debug($"[BRE] inventory swap skipped: outgoing={ItemName(outgoingItem)}, " +
+                             "reason=player-missing-or-dead");
+                return;
+            }
 
             PhysGrabObject physical = GetHeldPhysical(grabber);
             if (!IsStorableItem(physical, out ItemEquippable heldItem) ||
                 heldItem == outgoingItem ||
                 !IsLatestActiveHolder(grabber, physical))
             {
+                Plugin.Debug($"[BRE] inventory swap skipped: player={ReviveController.GetPlayerId(player)}, " +
+                             $"outgoing={ItemName(outgoingItem)}, reason=no-valid-held-item");
                 return;
             }
 

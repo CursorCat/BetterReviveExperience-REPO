@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.5
+
+- Fix occupied-slot swaps never being queued because the outgoing item has already entered its native `Unequipping` state before `RPC_CompleteUnequip` reaches the host.
+
 ## 0.3.4
 
 - Add host-side inventory swapping: pressing an occupied vanilla slot while holding another storable item stores the old item in the vacated slot.

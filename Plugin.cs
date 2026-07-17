@@ -17,7 +17,7 @@ namespace BetterReviveExperience
     {
         public const string PLUGIN_GUID = "com.mods.betterreviveexperience";
         public const string PLUGIN_NAME = "BetterReviveExperience";
-        public const string PLUGIN_VERSION = "0.3.4";
+        public const string PLUGIN_VERSION = "0.3.5";
 
         private const int ReviveCostStep = 1000;
         private const int ReviveCostMaximum = 100000;
