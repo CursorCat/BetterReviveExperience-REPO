@@ -12,6 +12,9 @@ Host-side revive and inventory protection mod for R.E.P.O.
 - 玩家死亡时，可收纳的手持物品会进入原版前三格中的空格；满格时传送到死亡玩家的头附近。
 - On death, return the storable held item to a free vanilla slot, or place it near the death head when all three slots are occupied.
 
+- 手持可收纳物品时按下另一个已占用格的快捷键，会将旧物品放进该格并取出新物品。
+- While holding a storable item, pressing another occupied-slot hotkey stores the old item in that slot and takes out the new item.
+
 - 死亡玩家的头进入提取点、卡车区域或推车时自动复活。
 - Automatically revive when a death head enters an extraction point, truck area, or cart.
 
@@ -44,6 +47,9 @@ Install REPOConfig as well to adjust settings in-game.
 
 - `ProtectHeldItems`：可收纳的手持物品因受击或翻滚被强制松开时，优先回到原格，再使用其他原版空格，默认开启；主动松手不受影响。前三格全满时，单人/房主继续持有，远程玩家的物品回收到附近。
 - `ProtectHeldItems`: after an impact or tumble release, return a storable held item to its original slot, then another vanilla slot; enabled by default; manual release remains unchanged. When full, the local player keeps holding it and a remote item is recovered nearby.
+
+- `SwapHeldItemOnOccupiedSlot`：手持可收纳物品时按下另一个已占用格的快捷键，将旧物品存入该格而不是掉到地上，默认开启。
+- `SwapHeldItemOnOccupiedSlot`: when an occupied-slot hotkey is pressed, store the held storable item in that slot instead of dropping it; enabled by default.
 
 - `ReturnHeldItemOnDeath`：死亡时将可收纳的手持物品放入原版前三格的空格；满格则传送到死亡玩家的头附近，默认开启。
 - `ReturnHeldItemOnDeath`: return a storable held item to a free vanilla slot on death, or place it near the death head when full; enabled by default.

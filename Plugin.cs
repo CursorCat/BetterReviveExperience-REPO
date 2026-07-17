@@ -17,7 +17,7 @@ namespace BetterReviveExperience
     {
         public const string PLUGIN_GUID = "com.mods.betterreviveexperience";
         public const string PLUGIN_NAME = "BetterReviveExperience";
-        public const string PLUGIN_VERSION = "0.3.3";
+        public const string PLUGIN_VERSION = "0.3.4";
 
         private const int ReviveCostStep = 1000;
         private const int ReviveCostMaximum = 100000;
@@ -31,6 +31,7 @@ namespace BetterReviveExperience
 
         public static ConfigEntry<bool> KeepItemsOnDeath { get; private set; }
         public static ConfigEntry<bool> ProtectHeldItems { get; private set; }
+        public static ConfigEntry<bool> SwapHeldItemOnOccupiedSlot { get; private set; }
         public static ConfigEntry<bool> ReturnHeldItemOnDeath { get; private set; }
         public static ConfigEntry<string> ReviveTrigger { get; private set; }
         public static ConfigEntry<string> ReviveCost { get; private set; }
@@ -60,6 +61,14 @@ namespace BetterReviveExperience
                 true,
                 "Return a storable held item to its original or first free vanilla inventory slot after an impact or tumble. " +
                 "If all three slots are occupied, the local player keeps holding it."
+            );
+
+            SwapHeldItemOnOccupiedSlot = Config.Bind(
+                "Inventory",
+                "SwapHeldItemOnOccupiedSlot",
+                true,
+                "When an occupied inventory hotkey is pressed while holding another storable item, " +
+                "store the held item in the vacated slot instead of dropping it."
             );
 
             ReturnHeldItemOnDeath = Config.Bind(
@@ -158,7 +167,8 @@ namespace BetterReviveExperience
 
             Log.LogInfo($"{PLUGIN_NAME} v{PLUGIN_VERSION} loaded");
             Log.LogInfo($"[BRE] patches={patchCount}, keepItems={KeepItemsOnDeath.Value}, " +
-                        $"protectHeldItems={ProtectHeldItems.Value}, returnDeathItem={ReturnHeldItemOnDeath.Value}, " +
+                        $"protectHeldItems={ProtectHeldItems.Value}, swapHeldItems={SwapHeldItemOnOccupiedSlot.Value}, " +
+                        $"returnDeathItem={ReturnHeldItemOnDeath.Value}, " +
                         $"mode={CurrentReviveMode}, cost={ReviveCostAmount}, " +
                         $"health={ReviveHealthPercent.Value}%, heldHead={EnableHeldHeadRevive.Value}/" +
                         $"{HeldHeadReviveKeyCode}, " +

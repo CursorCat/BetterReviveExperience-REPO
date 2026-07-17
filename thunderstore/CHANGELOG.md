@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.4
+
+- Add host-side inventory swapping: pressing an occupied vanilla slot while holding another storable item stores the old item in the vacated slot.
+- Add `SwapHeldItemOnOccupiedSlot`, enabled by default.
+- Cancel a pending swap safely if the item is destroyed, taken by another player, equipped elsewhere, or the target slot is no longer free.
+
 ## 0.3.3
 
 - Only treat verified impact and tumble RPCs as forced drops; ignore equip, weapon, enemy-grab, and overcharge release traffic.

@@ -10,6 +10,7 @@ namespace BetterReviveExperience.Patches
         private static void Postfix(PlayerAvatar __instance)
         {
             WeaponProtectionController.ObservePlayer(__instance);
+            WeaponProtectionController.ProcessPendingInventorySwap(__instance);
             WeaponProtectionController.ProcessForcedDropRecovery(__instance);
             ReviveController.OnPlayerAvatarUpdated(__instance);
             WeaponProtectionController.ProcessPendingReturn(__instance);
@@ -110,6 +111,11 @@ namespace BetterReviveExperience.Patches
             int physGrabberPhotonViewID,
             bool isForceUnequip)
         {
+            WeaponProtectionController.CaptureInventorySwap(
+                __instance,
+                physGrabberPhotonViewID,
+                isForceUnequip
+            );
             return ReviveController.AllowForcedUnequip(
                 __instance,
                 physGrabberPhotonViewID,

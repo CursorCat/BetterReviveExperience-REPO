@@ -33,11 +33,22 @@ namespace BetterReviveExperience
             public float GiveUpAt;
         }
 
+        private sealed class PendingInventorySwap
+        {
+            public HeldWeaponRecord HeldItem;
+            public ItemEquippable OutgoingItem;
+            public int TargetSlot;
+            public float ReadyAt;
+            public float GiveUpAt;
+        }
+
         private const float RecentHoldWindowSeconds = 0.75f;
         private const float DeathCleanupDelaySeconds = 0.6f;
         private const float ReturnTimeoutSeconds = 4f;
         private const float ForcedDropRecoveryDelaySeconds = 0.05f;
         private const float ForcedDropRecoveryTimeoutSeconds = 2f;
+        private const float InventorySwapDelaySeconds = 0.25f;
+        private const float InventorySwapTimeoutSeconds = 2f;
         private const float ImpactReleaseMinimumDisableSeconds = 0.95f;
         private const float ImpactReleaseMaximumDisableSeconds = 2.05f;
 
@@ -64,6 +75,9 @@ namespace BetterReviveExperience
 
         private static readonly Dictionary<string, PendingForcedDropRecovery> PendingForcedDropRecoveries =
             new Dictionary<string, PendingForcedDropRecovery>();
+
+        private static readonly Dictionary<string, PendingInventorySwap> PendingInventorySwaps =
+            new Dictionary<string, PendingInventorySwap>();
 
         private static readonly Dictionary<int, float> LastProtectionLogAt =
             new Dictionary<int, float>();
@@ -134,6 +148,7 @@ namespace BetterReviveExperience
 
             string playerId = ReviveController.GetPlayerId(player);
             PendingForcedDropRecoveries.Remove(playerId);
+            PendingInventorySwaps.Remove(playerId);
             if (!DeathCandidates.TryGetValue(playerId, out HeldWeaponRecord weapon)) return;
 
             DeathCandidates.Remove(playerId);
@@ -349,6 +364,128 @@ namespace BetterReviveExperience
                                $"item={ItemName(heldItem.Item)}, reason=no-free-vanilla-slot");
         }
 
+        public static void CaptureInventorySwap(
+            ItemEquippable outgoingItem,
+            int physGrabberViewId,
+            bool isForceUnequip)
+        {
+            if (!Plugin.SwapHeldItemOnOccupiedSlot.Value || isForceUnequip ||
+                !ReviveController.IsHost() || !outgoingItem || !outgoingItem.IsEquipped())
+            {
+                return;
+            }
+
+            int targetSlot = ReviveController.GetInventorySpotIndex(outgoingItem);
+            if (targetSlot < 0 || targetSlot > 2) return;
+
+            PhysGrabber grabber = ResolveGrabber(physGrabberViewId);
+            PlayerAvatar player = grabber ? grabber.playerAvatar : null;
+            if (!player || ReviveController.IsDead(player)) return;
+
+            PhysGrabObject physical = GetHeldPhysical(grabber);
+            if (!IsStorableItem(physical, out ItemEquippable heldItem) ||
+                heldItem == outgoingItem ||
+                !IsLatestActiveHolder(grabber, physical))
+            {
+                return;
+            }
+
+            HeldWeaponRecord record = RecordHolder(player, physical, heldItem);
+            string playerId = ReviveController.GetPlayerId(player);
+            PendingForcedDropRecoveries.Remove(playerId);
+            PendingInventorySwaps[playerId] = new PendingInventorySwap
+            {
+                HeldItem = record,
+                OutgoingItem = outgoingItem,
+                TargetSlot = targetSlot,
+                ReadyAt = Time.time + InventorySwapDelaySeconds,
+                GiveUpAt = Time.time + InventorySwapTimeoutSeconds
+            };
+
+            Plugin.Log.LogInfo($"[BRE] inventory swap queued: player={playerId}, " +
+                               $"held={ItemName(heldItem)}, outgoing={ItemName(outgoingItem)}, " +
+                               $"slot={targetSlot}");
+        }
+
+        public static void ProcessPendingInventorySwap(PlayerAvatar player)
+        {
+            if (!ReviveController.IsHost() || !player) return;
+
+            string playerId = ReviveController.GetPlayerId(player);
+            if (!PendingInventorySwaps.TryGetValue(playerId, out PendingInventorySwap pending) ||
+                Time.time < pending.ReadyAt)
+            {
+                return;
+            }
+
+            if (ReviveController.IsDead(player))
+            {
+                CancelInventorySwap(playerId, pending, "player-dead");
+                return;
+            }
+
+            HeldWeaponRecord held = pending.HeldItem;
+            if (held == null || !held.Item || !held.Physical || !pending.OutgoingItem)
+            {
+                CancelInventorySwap(playerId, pending, "item-missing");
+                return;
+            }
+
+            if (held.Item.IsEquipped())
+            {
+                if (ReviveController.GetInventorySpotIndex(held.Item) == pending.TargetSlot)
+                {
+                    PendingInventorySwaps.Remove(playerId);
+                    Plugin.Log.LogInfo($"[BRE] inventory swap already completed: player={playerId}, " +
+                                       $"item={ItemName(held.Item)}, slot={pending.TargetSlot}");
+                }
+                else
+                {
+                    CancelInventorySwap(playerId, pending, "held-item-equipped-elsewhere");
+                }
+
+                return;
+            }
+
+            if (!IsStillLastOwner(playerId, held.Physical) ||
+                IsHeldByAnotherPlayer(playerId, held.Physical))
+            {
+                CancelInventorySwap(playerId, pending, "new-holder");
+                return;
+            }
+
+            if (pending.OutgoingItem.IsEquipped())
+            {
+                if (Time.time < pending.GiveUpAt) return;
+
+                CancelInventorySwap(playerId, pending, "outgoing-item-still-equipped");
+                return;
+            }
+
+            if (held.Physical.playerGrabbing.Count > 0 && Time.time < pending.GiveUpAt)
+            {
+                return;
+            }
+
+            if (!IsVanillaSlotFree(player, playerId, pending.TargetSlot))
+            {
+                if (Time.time < pending.GiveUpAt) return;
+
+                CancelInventorySwap(playerId, pending, "target-slot-occupied");
+                return;
+            }
+
+            ReviveController.RestoreEquippedState(
+                held.Item,
+                pending.TargetSlot,
+                held.OwnerViewId
+            );
+            PendingInventorySwaps.Remove(playerId);
+            Plugin.Log.LogInfo($"[BRE] inventory swap completed: player={playerId}, " +
+                               $"stored={ItemName(held.Item)}, held={ItemName(pending.OutgoingItem)}, " +
+                               $"slot={pending.TargetSlot}");
+        }
+
         private static HeldWeaponRecord RecordHolder(
             PlayerAvatar player,
             PhysGrabObject physical,
@@ -460,6 +597,14 @@ namespace BetterReviveExperience
             return item;
         }
 
+        private static PhysGrabber ResolveGrabber(int photonViewId)
+        {
+            if (!SemiFunc.IsMultiplayer()) return PhysGrabber.instance;
+
+            PhotonView view = PhotonView.Find(photonViewId);
+            return view ? view.GetComponent<PhysGrabber>() : null;
+        }
+
         private static bool IsStillLastOwner(string playerId, PhysGrabObject physical)
         {
             return physical &&
@@ -502,6 +647,17 @@ namespace BetterReviveExperience
             }
 
             return -1;
+        }
+
+        private static bool IsVanillaSlotFree(PlayerAvatar player, string playerId, int slot)
+        {
+            if (slot < 0 || slot > 2) return false;
+
+            StatsManager stats = StatsManager.instance;
+            bool useLocalInventory = IsLocalOwner(player) && Inventory.instance != null;
+            if (!useLocalInventory && (stats == null || string.IsNullOrEmpty(playerId))) return false;
+
+            return !IsVanillaSlotTaken(stats, playerId, slot, useLocalInventory);
         }
 
         private static bool IsVanillaSlotTaken(
@@ -561,6 +717,16 @@ namespace BetterReviveExperience
                 : item.gameObject.name;
         }
 
+        private static void CancelInventorySwap(
+            string playerId,
+            PendingInventorySwap pending,
+            string reason)
+        {
+            PendingInventorySwaps.Remove(playerId);
+            Plugin.Log.LogInfo($"[BRE] inventory swap cancelled: player={playerId}, " +
+                               $"item={ItemName(pending?.HeldItem?.Item)}, reason={reason}");
+        }
+
         public static void Reset()
         {
             LastWeaponByPlayer.Clear();
@@ -568,6 +734,7 @@ namespace BetterReviveExperience
             DeathCandidates.Clear();
             PendingReturns.Clear();
             PendingForcedDropRecoveries.Clear();
+            PendingInventorySwaps.Clear();
             LastProtectionLogAt.Clear();
         }
     }
