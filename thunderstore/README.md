@@ -42,8 +42,8 @@ Install REPOConfig as well to adjust settings in-game.
 - `KeepItemsOnDeath`：是否保留背包栏物品，默认开启。
 - `KeepItemsOnDeath`: keep inventory-slot items; enabled by default.
 
-- `ProtectHeldItems`：可收纳的手持物品被强制松开时，优先回到原格，再使用其他原版空格，默认开启；主动松手不受影响。前三格全满时，单人/房主继续持有，远程玩家的物品回收到附近。
-- `ProtectHeldItems`: after a forced release, return a storable held item to its original slot, then another vanilla slot; enabled by default; manual release remains unchanged. When full, the local player keeps holding it and a remote item is recovered nearby.
+- `ProtectHeldItems`：可收纳的手持物品因受击或翻滚被强制松开时，优先回到原格，再使用其他原版空格，默认开启；主动松手不受影响。前三格全满时，单人/房主继续持有，远程玩家的物品回收到附近。
+- `ProtectHeldItems`: after an impact or tumble release, return a storable held item to its original slot, then another vanilla slot; enabled by default; manual release remains unchanged. When full, the local player keeps holding it and a remote item is recovered nearby.
 
 - `ReturnHeldItemOnDeath`：死亡时将可收纳的手持物品放入原版前三格的空格；满格则传送到死亡玩家的头附近，默认开启。
 - `ReturnHeldItemOnDeath`: return a storable held item to a free vanilla slot on death, or place it near the death head when full; enabled by default.
@@ -83,6 +83,9 @@ Install REPOConfig as well to adjust settings in-game.
 
 - 本模组不会读取或写入扩展背包格。安装任意扩展背包模组时，请预留原版前三格中的至少一格；否则手持物品只能传送到死亡玩家的头附近。
 - This mod does not read or write expanded inventory slots. When using any bag-expansion mod, keep at least one of the first three vanilla slots free; otherwise the held item can only be placed near the death head.
+
+- 请在游戏原生设置中开启“从背包取出后自动持有物品”。若该设置关闭，物品会在游戏的临时抓取计时结束后自动掉落；`ProtectHeldItems` 只处理受击和翻滚。
+- Enable the game's native auto-hold-after-unequip setting. When it is disabled, the game releases an item after its temporary hold expires; `ProtectHeldItems` only handles impacts and tumbles.
 
 - 请不要同时启用其他自动复活模组，以避免重复复活或重复扣费。
 - Do not enable other automatic revive mods at the same time, to avoid duplicate revives or charges.

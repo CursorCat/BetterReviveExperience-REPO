@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.3
+
+- Only treat verified impact and tumble RPCs as forced drops; ignore equip, weapon, enemy-grab, and overcharge release traffic.
+- Ignore stale remote grabber fields and record only the latest active holder of a storable item.
+- Warn when the game's native item-unequip auto-hold setting is disabled, which otherwise releases an item after the temporary hold expires.
+
 ## 0.3.2
 
 - Return a storable held item to its original vanilla inventory slot after a hit or tumble, falling back to another free vanilla slot.

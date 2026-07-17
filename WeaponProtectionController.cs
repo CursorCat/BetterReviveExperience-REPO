@@ -38,12 +38,17 @@ namespace BetterReviveExperience
         private const float ReturnTimeoutSeconds = 4f;
         private const float ForcedDropRecoveryDelaySeconds = 0.05f;
         private const float ForcedDropRecoveryTimeoutSeconds = 2f;
+        private const float ImpactReleaseMinimumDisableSeconds = 0.95f;
+        private const float ImpactReleaseMaximumDisableSeconds = 2.05f;
 
         private static readonly FieldInfo GrabbedPhysObjectField =
             AccessTools.Field(typeof(PhysGrabber), "grabbedPhysGrabObject");
 
         private static readonly FieldInfo ForceGrabTimerField =
             AccessTools.Field(typeof(ItemEquippable), "forceGrabTimer");
+
+        private static readonly FieldInfo ItemUnequipAutoHoldField =
+            AccessTools.Field(typeof(GameplayManager), "itemUnequipAutoHold");
 
         private static readonly Dictionary<string, HeldWeaponRecord> LastWeaponByPlayer =
             new Dictionary<string, HeldWeaponRecord>();
@@ -62,6 +67,8 @@ namespace BetterReviveExperience
 
         private static readonly Dictionary<int, float> LastProtectionLogAt =
             new Dictionary<int, float>();
+
+        private static bool AutoHoldWarningLogged;
 
         public static bool ValidateGameApi(ICollection<string> missing)
         {
@@ -82,8 +89,11 @@ namespace BetterReviveExperience
         {
             if (!ReviveController.IsHost() || !player || ReviveController.IsDead(player)) return;
 
+            WarnIfNativeAutoHoldDisabled(player);
+
             PhysGrabObject physical = GetHeldPhysical(player.physGrabber);
             if (!IsStorableItem(physical, out ItemEquippable item)) return;
+            if (!IsLatestActiveHolder(player.physGrabber, physical)) return;
 
             RecordHolder(player, physical, item);
         }
@@ -96,7 +106,8 @@ namespace BetterReviveExperience
             PhysGrabObject physical = GetHeldPhysical(player.physGrabber);
             HeldWeaponRecord record = null;
 
-            if (IsStorableItem(physical, out ItemEquippable item))
+            if (IsStorableItem(physical, out ItemEquippable item) &&
+                IsLatestActiveHolder(player.physGrabber, physical))
             {
                 record = RecordHolder(player, physical, item);
             }
@@ -207,10 +218,16 @@ namespace BetterReviveExperience
         public static bool AllowForcedRelease(
             PhysGrabber grabber,
             bool physGrabEnded,
+            float disableTimer,
             int releaseObjectViewId,
             PhotonMessageInfo info)
         {
             if (!Plugin.ProtectHeldItems.Value || !ReviveController.IsHost() || !grabber)
+            {
+                return true;
+            }
+
+            if (!IsImpactOrTumbleRelease(disableTimer, releaseObjectViewId))
             {
                 return true;
             }
@@ -220,6 +237,7 @@ namespace BetterReviveExperience
 
             PhysGrabObject physical = GetHeldPhysical(grabber);
             if (!IsStorableItem(physical, out ItemEquippable item)) return true;
+            if (!IsLatestActiveHolder(grabber, physical)) return true;
 
             HeldWeaponRecord record = RecordHolder(player, physical, item);
             string playerId = ReviveController.GetPlayerId(player);
@@ -254,7 +272,8 @@ namespace BetterReviveExperience
 
             Plugin.Log.LogInfo($"[BRE] forced item release queued for inventory: player={playerId}, " +
                                $"item={ItemName(item)}, preferredSlot={record.PreferredSlot}, " +
-                               $"singleplayer={!SemiFunc.IsMultiplayer()}");
+                               $"disableTimer={disableTimer:0.##}, physGrabEnded={physGrabEnded}, " +
+                               $"sender={GetSenderActorNumber(info)}, singleplayer={!SemiFunc.IsMultiplayer()}");
             return true;
         }
 
@@ -374,9 +393,62 @@ namespace BetterReviveExperience
 
         private static PhysGrabObject GetHeldPhysical(PhysGrabber grabber)
         {
-            return grabber && GrabbedPhysObjectField != null
-                ? GrabbedPhysObjectField.GetValue(grabber) as PhysGrabObject
+            if (!grabber || !grabber.grabbed || GrabbedPhysObjectField == null) return null;
+
+            PhysGrabObject physical = GrabbedPhysObjectField.GetValue(grabber) as PhysGrabObject;
+            return physical && physical.playerGrabbing.Contains(grabber)
+                ? physical
                 : null;
+        }
+
+        private static bool IsLatestActiveHolder(PhysGrabber grabber, PhysGrabObject physical)
+        {
+            if (!grabber || !physical) return false;
+
+            for (int index = physical.playerGrabbing.Count - 1; index >= 0; index--)
+            {
+                PhysGrabber candidate = physical.playerGrabbing[index];
+                if (!candidate || !candidate.grabbed || GrabbedPhysObjectField == null) continue;
+
+                if (GrabbedPhysObjectField.GetValue(candidate) as PhysGrabObject == physical)
+                {
+                    return candidate == grabber;
+                }
+            }
+
+            return false;
+        }
+
+        private static bool IsImpactOrTumbleRelease(float disableTimer, int releaseObjectViewId)
+        {
+            return releaseObjectViewId == -1 &&
+                   disableTimer >= ImpactReleaseMinimumDisableSeconds &&
+                   disableTimer <= ImpactReleaseMaximumDisableSeconds;
+        }
+
+        private static int GetSenderActorNumber(PhotonMessageInfo info)
+        {
+            return info.Sender != null ? info.Sender.ActorNumber : -1;
+        }
+
+        private static void WarnIfNativeAutoHoldDisabled(PlayerAvatar player)
+        {
+            if (AutoHoldWarningLogged || !IsLocalOwner(player) ||
+                GameplayManager.instance == null || ItemUnequipAutoHoldField == null)
+            {
+                return;
+            }
+
+            object settingValue = ItemUnequipAutoHoldField.GetValue(GameplayManager.instance);
+            if (settingValue is bool enabled && !enabled)
+            {
+                AutoHoldWarningLogged = true;
+                Plugin.Log.LogWarning(
+                    "[BRE] The native ItemUnequipAutoHold setting is disabled. Items taken from inventory " +
+                    "will be released after the game's temporary hold expires. Enable the game's auto-hold " +
+                    "setting; ProtectHeldItems only handles impact and tumble releases."
+                );
+            }
         }
 
         private static bool IsStorableItem(PhysGrabObject physical, out ItemEquippable item)

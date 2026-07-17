@@ -17,7 +17,7 @@ namespace BetterReviveExperience
     {
         public const string PLUGIN_GUID = "com.mods.betterreviveexperience";
         public const string PLUGIN_NAME = "BetterReviveExperience";
-        public const string PLUGIN_VERSION = "0.3.2";
+        public const string PLUGIN_VERSION = "0.3.3";
 
         private const int ReviveCostStep = 1000;
         private const int ReviveCostMaximum = 100000;
@@ -58,7 +58,7 @@ namespace BetterReviveExperience
                 "Inventory",
                 "ProtectHeldItems",
                 true,
-                "Return a storable held item to its original or first free vanilla inventory slot after a forced release. " +
+                "Return a storable held item to its original or first free vanilla inventory slot after an impact or tumble. " +
                 "If all three slots are occupied, the local player keeps holding it."
             );
 

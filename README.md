@@ -45,7 +45,7 @@ Open `Mods → BetterReviveExperience` in the game menu.
 | 设置 | 默认值 | 简要说明 |
 |---|---:|---|
 | `KeepItemsOnDeath` | 开启 / On | 保留背包栏物品。<br>Keep inventory-slot items. |
-| `ProtectHeldItems` | 开启 / On | 可收纳的手持物品被强制松开时，优先回到原格，再使用其他原版空格；主动松手不受影响。前三格全满时，单人/房主继续持有，远程玩家的物品回收到附近。<br>After a forced release, return a storable held item to its original slot, then another vanilla slot; manual release remains unchanged. When full, the local player keeps holding it and a remote item is recovered nearby. |
+| `ProtectHeldItems` | 开启 / On | 可收纳的手持物品因受击或翻滚被强制松开时，优先回到原格，再使用其他原版空格；主动松手不受影响。前三格全满时，单人/房主继续持有，远程玩家的物品回收到附近。<br>After an impact or tumble release, return a storable held item to its original slot, then another vanilla slot; manual release remains unchanged. When full, the local player keeps holding it and a remote item is recovered nearby. |
 | `ReturnHeldItemOnDeath` | 开启 / On | 死亡时将可收纳的手持物品放入原版前三格的空格；满格则传送到死亡玩家的头附近。<br>Return a storable held item to a free vanilla slot on death, or place it near the death head when full. |
 | `Mode` | `ExtractionOrTruck` | 选择 `Disabled`、`ExtractionMachineActivated` 或 `ExtractionOrTruck`。<br>Choose `Disabled`, `ExtractionMachineActivated`, or `ExtractionOrTruck`. |
 | `Cost` | `0` | 每次复活消耗的团队货币；可选 `0` 至 `100000`，每次增加 `1000`。<br>Team currency cost per revive; choose `0` to `100000` in `1000` increments. |
@@ -73,6 +73,9 @@ Restart the game after changing settings before testing.
 
 - 如果 H 与其他模组冲突，请把 `HeldHeadReviveKey` 改成其他按键。
 - If H conflicts with another mod, change `HeldHeadReviveKey` to another key.
+
+- 请在游戏原生设置中开启“从背包取出后自动持有物品”。若该设置关闭，物品会在游戏的临时抓取计时结束后自动掉落；`ProtectHeldItems` 只处理受击和翻滚。
+- Enable the game's native auto-hold-after-unequip setting. When it is disabled, the game releases an item after its temporary hold expires; `ProtectHeldItems` only handles impacts and tumbles.
 
 - 请不要同时启用其他自动复活模组，以避免重复复活或重复扣费。
 - Do not enable other automatic revive mods at the same time, to avoid duplicate revives or charges.

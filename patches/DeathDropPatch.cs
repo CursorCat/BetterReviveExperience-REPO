@@ -70,6 +70,7 @@ namespace BetterReviveExperience.Patches
             return WeaponProtectionController.AllowForcedRelease(
                 __instance,
                 physGrabEnded,
+                _disableTimer,
                 _releaseObjectViewID,
                 _info
             );
